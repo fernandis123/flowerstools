@@ -1,198 +1,363 @@
+// ============================================================
+// 数字化工具 - 多用户云端后端服务器 (PostgreSQL + JSON 回退)
+// ============================================================
+
 const express = require('express');
 const cors = require('cors');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const { Pool } = require('pg');
+const path = require('path');
+const fs = require('fs');
 
+// ===== 配置 =====
 const app = express();
-app.use(cors());
-app.use(express.json({ limit: '10mb' }));
-app.use(express.static('public'));
-
 const PORT = process.env.PORT || 3000;
-const JWT_SECRET = process.env.JWT_SECRET || 'my_digital_tool_secret_key_2024';
+const JWT_SECRET = process.env.JWT_SECRET || 'mySuperSecretKey2024';
 
-// ===== PostgreSQL 连接 =====
-// Railway 会自动注入 DATABASE_URL 环境变量
-const pool = new Pool({
-    connectionString: process.env.DATABASE_URL,
-    ssl: process.env.DATABASE_URL ? { rejectUnauthorized: false } : false
-});
+// ===== 中间件 =====
+app.use(cors());
+app.use(express.json());
+app.use(express.static(path.join(__dirname, 'public')));
 
-// ===== 初始化数据库表 =====
-async function initDB() {
-    try {
-        // 用户表
-        await pool.query(`
-            CREATE TABLE IF NOT EXISTS users (
-                username VARCHAR(100) PRIMARY KEY,
-                password VARCHAR(255) NOT NULL,
-                created_at TIMESTAMP DEFAULT NOW()
-            )
-        `);
-        // 道具表
-        await pool.query(`
-            CREATE TABLE IF NOT EXISTS props (
-                id SERIAL PRIMARY KEY,
-                owner_name VARCHAR(100) NOT NULL,
-                prop_name VARCHAR(200) NOT NULL,
-                prop_desc TEXT NOT NULL,
-                created_at TIMESTAMP DEFAULT NOW()
-            )
-        `);
-        console.log('✅ 数据库初始化完成');
-    } catch(e) {
-        console.error('❌ 数据库初始化失败:', e.message);
-        // 如果没有数据库（本地运行），回退到 JSON 文件
-        console.log('⚠️  回退到 JSON 文件存储');
-    }
+// ===== 数据库连接 =====
+let pool;
+let useJsonFallback = false;
+const DB_FILE = path.join(__dirname, 'data.json');
+
+// ===== 初始化数据库 =====
+async function initDatabase() {
+  const connectionString = process.env.DATABASE_URL;
+
+  if (!connectionString) {
+    console.log('⚠️ 未设置 DATABASE_URL，回退到 JSON 文件存储');
+    useJsonFallback = true;
+    initJsonStorage();
+    return;
+  }
+
+  try {
+    pool = new Pool({
+      connectionString: connectionString,
+      ssl: {
+        rejectUnauthorized: false   // Railway 必须！
+      }
+    });
+
+    // 测试连接
+    const client = await pool.connect();
+    console.log('✅ PostgreSQL 连接成功！');
+
+    // 创建 users 表
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS users (
+        id SERIAL PRIMARY KEY,
+        username VARCHAR(50) UNIQUE NOT NULL,
+        password VARCHAR(255) NOT NULL,
+        score INTEGER DEFAULT 0,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    console.log('✅ users 表已就绪');
+    client.release();
+
+  } catch (err) {
+    console.error('❌ 数据库初始化失败:', err.message);
+    console.log('⚠️ 回退到 JSON 文件存储');
+    useJsonFallback = true;
+    initJsonStorage();
+  }
 }
-initDB();
 
-// ===== JWT 认证中间件 =====
-function authMiddleware(req, res, next) {
-    const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-        return res.status(401).json({ error: '未登录，请先登录' });
-    }
-    try {
-        const token = authHeader.split(' ')[1];
-        const decoded = jwt.verify(token, JWT_SECRET);
-        req.username = decoded.username;
-        next();
-    } catch(e) {
-        return res.status(401).json({ error: '登录已过期，请重新登录' });
-    }
+// ===== JSON 文件存储初始化 =====
+function initJsonStorage() {
+  if (!fs.existsSync(DB_FILE)) {
+    const defaultData = { users: [] };
+    fs.writeFileSync(DB_FILE, JSON.stringify(defaultData, null, 2));
+    console.log('✅ 已创建 data.json 文件');
+  } else {
+    console.log('✅ data.json 已存在');
+  }
 }
 
-// ===== 用户 API =====
+// ===== 读取用户数据（JSON 回退） =====
+function readUsers() {
+  try {
+    const data = fs.readFileSync(DB_FILE, 'utf8');
+    const parsed = JSON.parse(data);
+    return parsed.users || [];
+  } catch {
+    return [];
+  }
+}
 
+// ===== 写入用户数据（JSON 回退） =====
+function writeUsers(users) {
+  fs.writeFileSync(DB_FILE, JSON.stringify({ users }, null, 2));
+}
+
+// ===== 注册接口 =====
 app.post('/api/register', async (req, res) => {
-    try {
-        const { username, password } = req.body;
-        if (!username || !password) return res.status(400).json({ error: '用户名和密码不能为空' });
-        if (username.length < 2) return res.status(400).json({ error: '用户名至少2个字符' });
-        if (password.length < 3) return res.status(400).json({ error: '密码至少3个字符' });
+  try {
+    const { username, password } = req.body;
 
-        const hashedPw = await bcrypt.hash(password, 10);
-        await pool.query('INSERT INTO users (username, password) VALUES ($1, $2)', [username, hashedPw]);
-
-        const token = jwt.sign({ username }, JWT_SECRET, { expiresIn: '7d' });
-        res.json({ token, username, message: '注册成功' });
-    } catch(e) {
-        if (e.code === '23505') return res.status(409).json({ error: '用户名已存在' });
-        res.status(500).json({ error: '服务器错误' });
+    if (!username || !password) {
+      return res.status(400).json({ error: '用户名和密码不能为空' });
     }
+    if (username.length < 2) {
+      return res.status(400).json({ error: '用户名至少2个字符' });
+    }
+    if (password.length < 4) {
+      return res.status(400).json({ error: '密码至少4个字符' });
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    if (useJsonFallback) {
+      // === JSON 方式 ===
+      const users = readUsers();
+      const existing = users.find(u => u.username === username);
+      if (existing) {
+        return res.status(400).json({ error: '用户名已存在' });
+      }
+      const newUser = {
+        id: users.length + 1,
+        username,
+        password: hashedPassword,
+        score: 0,
+        created_at: new Date().toISOString()
+      };
+      users.push(newUser);
+      writeUsers(users);
+
+      const token = jwt.sign(
+        { id: newUser.id, username: newUser.username },
+        JWT_SECRET,
+        { expiresIn: '7d' }
+      );
+
+      return res.json({
+        message: '注册成功',
+        token,
+        user: { id: newUser.id, username: newUser.username, score: 0 }
+      });
+
+    } else {
+      // === PostgreSQL 方式 ===
+      const existing = await pool.query(
+        'SELECT * FROM users WHERE username = $1',
+        [username]
+      );
+      if (existing.rows.length > 0) {
+        return res.status(400).json({ error: '用户名已存在' });
+      }
+
+      const result = await pool.query(
+        'INSERT INTO users (username, password) VALUES ($1, $2) RETURNING id, username, score',
+        [username, hashedPassword]
+      );
+      const newUser = result.rows[0];
+
+      const token = jwt.sign(
+        { id: newUser.id, username: newUser.username },
+        JWT_SECRET,
+        { expiresIn: '7d' }
+      );
+
+      return res.json({
+        message: '注册成功',
+        token,
+        user: { id: newUser.id, username: newUser.username, score: newUser.score }
+      });
+    }
+
+  } catch (err) {
+    console.error('注册错误:', err.message);
+    res.status(500).json({ error: '服务器错误，请稍后再试' });
+  }
 });
 
+// ===== 登录接口 =====
 app.post('/api/login', async (req, res) => {
-    try {
-        const { username, password } = req.body;
-        if (!username || !password) return res.status(400).json({ error: '用户名和密码不能为空' });
+  try {
+    const { username, password } = req.body;
 
-        const result = await pool.query('SELECT * FROM users WHERE username = $1', [username]);
-        if (result.rows.length === 0) return res.status(404).json({ error: '用户不存在' });
-
-        const valid = await bcrypt.compare(password, result.rows[0].password);
-        if (!valid) return res.status(401).json({ error: '密码错误' });
-
-        const token = jwt.sign({ username }, JWT_SECRET, { expiresIn: '7d' });
-        res.json({ token, username, message: '登录成功' });
-    } catch(e) {
-        res.status(500).json({ error: '服务器错误' });
+    if (!username || !password) {
+      return res.status(400).json({ error: '用户名和密码不能为空' });
     }
-});
 
-app.get('/api/user/profile', authMiddleware, (req, res) => {
-    res.json({ username: req.username });
-});
+    if (useJsonFallback) {
+      // === JSON 方式 ===
+      const users = readUsers();
+      const user = users.find(u => u.username === username);
+      if (!user) {
+        return res.status(400).json({ error: '用户名或密码错误' });
+      }
 
-app.put('/api/user/username', authMiddleware, async (req, res) => {
-    try {
-        const { newUsername } = req.body;
-        if (!newUsername || newUsername.length < 2) return res.status(400).json({ error: '用户名至少2个字符' });
+      const isValid = await bcrypt.compare(password, user.password);
+      if (!isValid) {
+        return res.status(400).json({ error: '用户名或密码错误' });
+      }
 
-        await pool.query('UPDATE users SET username = $1 WHERE username = $2', [newUsername, req.username]);
-        await pool.query('UPDATE props SET owner_name = $1 WHERE owner_name = $2', [newUsername, req.username]);
+      const token = jwt.sign(
+        { id: user.id, username: user.username },
+        JWT_SECRET,
+        { expiresIn: '7d' }
+      );
 
-        const token = jwt.sign({ username: newUsername }, JWT_SECRET, { expiresIn: '7d' });
-        res.json({ token, username: newUsername, message: '用户名修改成功' });
-    } catch(e) {
-        if (e.code === '23505') return res.status(409).json({ error: '该用户名已被使用' });
-        res.status(500).json({ error: '服务器错误' });
+      return res.json({
+        message: '登录成功',
+        token,
+        user: { id: user.id, username: user.username, score: user.score }
+      });
+
+    } else {
+      // === PostgreSQL 方式 ===
+      const result = await pool.query(
+        'SELECT * FROM users WHERE username = $1',
+        [username]
+      );
+      if (result.rows.length === 0) {
+        return res.status(400).json({ error: '用户名或密码错误' });
+      }
+
+      const user = result.rows[0];
+      const isValid = await bcrypt.compare(password, user.password);
+      if (!isValid) {
+        return res.status(400).json({ error: '用户名或密码错误' });
+      }
+
+      const token = jwt.sign(
+        { id: user.id, username: user.username },
+        JWT_SECRET,
+        { expiresIn: '7d' }
+      );
+
+      return res.json({
+        message: '登录成功',
+        token,
+        user: { id: user.id, username: user.username, score: user.score }
+      });
     }
+
+  } catch (err) {
+    console.error('登录错误:', err.message);
+    res.status(500).json({ error: '服务器错误，请稍后再试' });
+  }
 });
 
-app.put('/api/user/password', authMiddleware, async (req, res) => {
-    try {
-        const { newPassword } = req.body;
-        if (!newPassword || newPassword.length < 3) return res.status(400).json({ error: '密码至少3个字符' });
-
-        const hashedPw = await bcrypt.hash(newPassword, 10);
-        await pool.query('UPDATE users SET password = $1 WHERE username = $2', [hashedPw, req.username]);
-        res.json({ message: '密码修改成功' });
-    } catch(e) {
-        res.status(500).json({ error: '服务器错误' });
+// ===== 获取用户信息（需要 Token） =====
+app.get('/api/user', authenticateToken, async (req, res) => {
+  try {
+    if (useJsonFallback) {
+      const users = readUsers();
+      const user = users.find(u => u.id === req.user.id);
+      if (!user) return res.status(404).json({ error: '用户不存在' });
+      return res.json({ id: user.id, username: user.username, score: user.score });
+    } else {
+      const result = await pool.query(
+        'SELECT id, username, score FROM users WHERE id = $1',
+        [req.user.id]
+      );
+      if (result.rows.length === 0) {
+        return res.status(404).json({ error: '用户不存在' });
+      }
+      return res.json(result.rows[0]);
     }
+  } catch (err) {
+    console.error('获取用户信息错误:', err.message);
+    res.status(500).json({ error: '服务器错误' });
+  }
 });
 
-// ===== 道具 API =====
+// ===== 更新分数 =====
+app.post('/api/score', authenticateToken, async (req, res) => {
+  try {
+    const { score } = req.body;
 
-app.post('/api/props', authMiddleware, async (req, res) => {
-    try {
-        const { propName, propDesc } = req.body;
-        if (!propName || !propDesc) return res.status(400).json({ error: '道具名称和描述不能为空' });
-
-        const result = await pool.query(
-            'INSERT INTO props (owner_name, prop_name, prop_desc) VALUES ($1, $2, $3) RETURNING id',
-            [req.username, propName.trim(), propDesc.trim()]
-        );
-        res.json({ id: result.rows[0].id, message: '道具录入成功' });
-    } catch(e) {
-        res.status(500).json({ error: '服务器错误' });
+    if (useJsonFallback) {
+      const users = readUsers();
+      const idx = users.findIndex(u => u.id === req.user.id);
+      if (idx === -1) return res.status(404).json({ error: '用户不存在' });
+      users[idx].score = score || 0;
+      writeUsers(users);
+      return res.json({ message: '分数已更新', score: users[idx].score });
+    } else {
+      const result = await pool.query(
+        'UPDATE users SET score = $1 WHERE id = $2 RETURNING id, username, score',
+        [score || 0, req.user.id]
+      );
+      if (result.rows.length === 0) {
+        return res.status(404).json({ error: '用户不存在' });
+      }
+      return res.json({ message: '分数已更新', score: result.rows[0].score });
     }
+  } catch (err) {
+    console.error('更新分数错误:', err.message);
+    res.status(500).json({ error: '服务器错误' });
+  }
 });
 
-app.get('/api/props/mine', authMiddleware, async (req, res) => {
-    try {
-        const result = await pool.query(
-            'SELECT * FROM props WHERE owner_name = $1 ORDER BY created_at DESC',
-            [req.username]
-        );
-        res.json(result.rows);
-    } catch(e) {
-        res.status(500).json({ error: '服务器错误' });
+// ===== 排行榜 =====
+app.get('/api/ranking', async (req, res) => {
+  try {
+    if (useJsonFallback) {
+      const users = readUsers();
+      const ranking = users
+        .sort((a, b) => b.score - a.score)
+        .slice(0, 50)
+        .map((u, i) => ({
+          rank: i + 1,
+          username: u.username,
+          score: u.score
+        }));
+      return res.json(ranking);
+    } else {
+      const result = await pool.query(
+        'SELECT username, score FROM users ORDER BY score DESC LIMIT 50'
+      );
+      const ranking = result.rows.map((u, i) => ({
+        rank: i + 1,
+        username: u.username,
+        score: u.score
+      }));
+      return res.json(ranking);
     }
+  } catch (err) {
+    console.error('排行榜错误:', err.message);
+    res.status(500).json({ error: '服务器错误' });
+  }
 });
 
-app.delete('/api/props/:id', authMiddleware, async (req, res) => {
-    try {
-        const id = parseInt(req.params.id);
-        const result = await pool.query('DELETE FROM props WHERE id = $1 AND owner_name = $2 RETURNING id', [id, req.username]);
-        if (result.rows.length === 0) return res.status(404).json({ error: '道具不存在' });
-        res.json({ message: '删除成功' });
-    } catch(e) {
-        res.status(500).json({ error: '服务器错误' });
+// ===== Token 验证中间件 =====
+function authenticateToken(req, res, next) {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1];
+
+  if (!token) {
+    return res.status(401).json({ error: '未登录，请先登录' });
+  }
+
+  jwt.verify(token, JWT_SECRET, (err, user) => {
+    if (err) {
+      return res.status(403).json({ error: '登录已过期，请重新登录' });
     }
-});
+    req.user = user;
+    next();
+  });
+}
 
-app.get('/api/props/search', async (req, res) => {
-    try {
-        const q = (req.query.q || '').trim();
-        if (!q) return res.json([]);
-        const result = await pool.query(
-            'SELECT * FROM props WHERE LOWER(prop_name) LIKE LOWER($1) ORDER BY created_at DESC',
-            ['%' + q + '%']
-        );
-        res.json(result.rows);
-    } catch(e) {
-        res.status(500).json({ error: '服务器错误' });
-    }
-});
+// ===== 启动服务器 =====
+async function start() {
+  await initDatabase();
 
-// ===== 启动 =====
-app.listen(PORT, '0.0.0.0', () => {
-    console.log(`\n🎮 数字化工具服务器已启动！`);
-    console.log(`📡 端口: ${PORT}`);
-    console.log(`🔗 打开浏览器访问: http://localhost:${PORT}\n`);
-});
+  app.listen(PORT, '0.0.0.0', () => {
+    console.log('\n==========================================');
+    console.log('🎮 数字化工具服务器已启动！');
+    console.log('📡 端口:', PORT);
+    console.log('🔗 打开浏览器访问: http://localhost:' + PORT);
+    console.log('==========================================\n');
+  });
+}
+
+start();
