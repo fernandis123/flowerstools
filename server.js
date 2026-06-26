@@ -3,14 +3,14 @@ const path = require('path');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-app.get('/', (req, res) => {
-  res.send('<h1>✅ 服务器正常运行！</h1><p>如果看到这行字，说明 Express 工作正常</p>');
-});
+// 静态文件
+app.use('/', express.static(path.join(__dirname, 'public')));
 
-app.get('/api/test', (req, res) => {
-  res.json({ status: 'ok', message: 'API 正常' });
+// 首页路由（兜底）
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
 app.listen(PORT, '0.0.0.0', () => {
-  console.log('✅ 测试服务器启动，端口:', PORT);
+  console.log('✅ 服务器启动，端口:', PORT);
 });
