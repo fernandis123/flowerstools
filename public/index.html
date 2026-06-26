@@ -3,44 +3,64 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>数字化工具 - 道具管理</title>
+  <title>🌸 Vivien的花园</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; display: flex; justify-content: center; align-items: center; padding: 20px; }
-    .container { background: white; border-radius: 20px; padding: 40px; width: 100%; max-width: 500px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); }
-    h1 { text-align: center; color: #333; margin-bottom: 30px; font-size: 28px; }
-    .tab { display: flex; margin-bottom: 25px; border-radius: 10px; overflow: hidden; border: 1px solid #e0e0e0; }
-    .tab button { flex: 1; padding: 12px; border: none; background: #f5f5f5; cursor: pointer; font-size: 16px; transition: all 0.3s; }
-    .tab button.active { background: #667eea; color: white; }
-    .form { display: flex; flex-direction: column; gap: 15px; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: linear-gradient(135deg, #f5e6d3 0%, #e8d5c4 50%, #d4e9d6 100%); min-height: 100vh; display: flex; justify-content: center; align-items: center; padding: 20px; }
+    .container { background: rgba(255,255,255,0.95); border-radius: 24px; padding: 35px 40px; width: 100%; max-width: 520px; box-shadow: 0 8px 32px rgba(0,0,0,0.1); }
+    h1 { text-align: center; color: #5a4a3a; margin-bottom: 25px; font-size: 26px; }
+    .tab { display: flex; margin-bottom: 20px; border-radius: 12px; overflow: hidden; border: 1px solid #e8ddd0; }
+    .tab button { flex: 1; padding: 12px; border: none; background: #faf5ef; cursor: pointer; font-size: 15px; transition: all 0.3s; color: #8a7a6a; }
+    .tab button.active { background: #c4a882; color: white; font-weight: 600; }
+    .form { display: flex; flex-direction: column; gap: 14px; }
     .form.hidden { display: none; }
-    input { padding: 14px 16px; border: 2px solid #e0e0e0; border-radius: 10px; font-size: 16px; outline: none; transition: border 0.3s; }
-    input:focus { border-color: #667eea; }
-    button.submit { padding: 14px; background: linear-gradient(135deg, #667eea, #764ba2); color: white; border: none; border-radius: 10px; font-size: 16px; cursor: pointer; transition: transform 0.2s; }
-    button.submit:hover { transform: translateY(-2px); }
-    .msg { text-align: center; color: #e74c3c; font-size: 14px; min-height: 20px; }
-    .msg.success { color: #27ae60; }
+    input, textarea { padding: 13px 16px; border: 2px solid #e8ddd0; border-radius: 12px; font-size: 15px; outline: none; transition: border 0.3s; background: #fcf9f5; }
+    input:focus, textarea:focus { border-color: #c4a882; }
+    textarea { resize: vertical; min-height: 70px; }
+    button.submit { padding: 13px; background: #c4a882; color: white; border: none; border-radius: 12px; font-size: 16px; cursor: pointer; transition: all 0.3s; font-weight: 500; }
+    button.submit:hover { background: #b69775; transform: translateY(-1px); }
+    .msg { text-align: center; color: #d4766a; font-size: 14px; min-height: 20px; }
+    .msg.success { color: #6a9d7a; }
     .dashboard { display: none; }
     .dashboard.show { display: block; }
-    .user-info { background: #f8f9ff; padding: 15px; border-radius: 10px; margin-bottom: 20px; }
-    .user-info p { margin: 5px 0; color: #555; }
-    .user-info strong { color: #333; }
-    .logout { background: #e74c3c; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; float: right; }
-    .section-title { font-size: 18px; color: #333; margin: 20px 0 10px; }
-    textarea { padding: 12px; border: 2px solid #e0e0e0; border-radius: 10px; font-size: 14px; resize: vertical; min-height: 80px; outline: none; }
-    textarea:focus { border-color: #667eea; }
-    .props-list { max-height: 300px; overflow-y: auto; }
-    .prop-item { background: #f8f9ff; padding: 12px; border-radius: 8px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; }
+    .user-info { background: #f8f4ee; padding: 16px 20px; border-radius: 14px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; }
+    .user-info .left p { margin: 3px 0; color: #6a5a4a; font-size: 14px; }
+    .user-info .left strong { color: #4a3a2a; }
+    .logout { background: #d4a8a0; color: white; border: none; padding: 8px 18px; border-radius: 8px; cursor: pointer; font-size: 13px; transition: background 0.3s; }
+    .logout:hover { background: #c4978f; }
+    .nav-tabs { display: flex; gap: 8px; margin-bottom: 20px; }
+    .nav-tabs button { flex: 1; padding: 10px; border: 2px solid #e8ddd0; background: #faf5ef; border-radius: 10px; cursor: pointer; font-size: 14px; color: #8a7a6a; transition: all 0.3s; }
+    .nav-tabs button.active { border-color: #c4a882; background: #c4a882; color: white; }
+    .nav-section { display: none; }
+    .nav-section.show { display: block; }
+
+    /* 搜索区域突出显示 */
+    .search-area { background: #f8f4ee; border-radius: 14px; padding: 20px; margin-bottom: 20px; }
+    .search-area .search-title { font-size: 14px; color: #8a7a6a; margin-bottom: 10px; font-weight: 500; }
+    .search-row { display: flex; gap: 10px; }
+    .search-row input { flex: 1; }
+    .search-row button { padding: 13px 20px; background: #6a9d7a; color: white; border: none; border-radius: 12px; cursor: pointer; font-size: 15px; transition: all 0.3s; white-space: nowrap; }
+    .search-row button:hover { background: #5a8d6a; }
+    .search-result { margin-top: 12px; max-height: 200px; overflow-y: auto; }
+    .search-result .item { padding: 10px; background: white; border-radius: 8px; margin-bottom: 6px; border: 1px solid #e8ddd0; }
+    .search-result .item .name { font-weight: 600; color: #4a3a2a; }
+    .search-result .item .desc { font-size: 13px; color: #8a7a6a; margin-top: 2px; }
+    .search-result .item .owner { font-size: 12px; color: #b69775; }
+    .search-result .empty { text-align: center; color: #b0a090; padding: 20px; }
+
+    .props-list { max-height: 260px; overflow-y: auto; }
+    .prop-item { background: #f8f4ee; padding: 12px 16px; border-radius: 10px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; }
     .prop-item .info { flex: 1; }
-    .prop-item .name { font-weight: bold; color: #333; }
-    .prop-item .desc { font-size: 13px; color: #666; margin-top: 3px; }
-    .prop-item .del { background: #e74c3c; color: white; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 12px; }
-    .link-btn { background: none; border: none; color: #667eea; cursor: pointer; text-decoration: underline; padding: 0; font-size: 14px; }
+    .prop-item .name { font-weight: 600; color: #4a3a2a; }
+    .prop-item .desc { font-size: 13px; color: #8a7a6a; margin-top: 2px; }
+    .prop-item .del { background: #d4a8a0; color: white; border: none; padding: 6px 14px; border-radius: 8px; cursor: pointer; font-size: 12px; transition: background 0.3s; }
+    .prop-item .del:hover { background: #c4978f; }
+    .section-title { font-size: 16px; color: #5a4a3a; margin: 0 0 12px 0; font-weight: 600; }
   </style>
 </head>
 <body>
   <div class="container">
-    <h1>🛠️ 数字化工具</h1>
+    <h1>🌸 Vivien的花园</h1>
 
     <!-- 登录/注册 -->
     <div id="authView">
@@ -53,195 +73,222 @@
         <input type="text" id="loginUsername" placeholder="用户名" required>
         <input type="password" id="loginPassword" placeholder="密码" required>
         <div class="msg" id="loginMsg"></div>
-        <button type="submit" class="submit">登录</button>
+        <button type="submit" class="submit">🌸 进入花园</button>
       </form>
 
       <form id="registerForm" class="form hidden" onsubmit="handleRegister(event)">
         <input type="text" id="regUsername" placeholder="用户名" required>
         <input type="password" id="regPassword" placeholder="密码" required>
         <div class="msg" id="regMsg"></div>
-        <button type="submit" class="submit">注册</button>
+        <button type="submit" class="submit">🌸 注册账号</button>
       </form>
     </div>
 
     <!-- 主面板 -->
     <div id="dashboardView" class="dashboard">
       <div class="user-info">
+        <div class="left">
+          <p>👤 <strong id="displayName"></strong></p>
+          <p>🏆 积分: <strong id="displayScore">0</strong></p>
+        </div>
         <button class="logout" onclick="handleLogout()">退出</button>
-        <p>👤 <strong id="displayName"></strong></p>
-        <p>🏆 积分: <strong id="displayScore">0</strong></p>
       </div>
 
-      <div class="section-title">📝 修改个人信息</div>
-      <div style="display:flex;gap:10px;margin-bottom:15px">
-        <input type="text" id="newUsername" placeholder="新用户名" style="flex:1">
-        <button class="submit" onclick="updateUsername()" style="padding:10px;font-size:14px">改名</button>
-      </div>
-      <div style="display:flex;gap:10px;margin-bottom:20px">
-        <input type="password" id="newPassword" placeholder="新密码" style="flex:1">
-        <button class="submit" onclick="updatePassword()" style="padding:10px;font-size:14px">改密码</button>
+      <!-- 导航菜单 -->
+      <div class="nav-tabs">
+        <button class="active" onclick="switchNav('search')">🔍 搜花</button>
+        <button onclick="switchNav('myFlowers')">🌷 我的花</button>
+        <button onclick="switchNav('add')">🌸 录入</button>
+        <button onclick="switchNav('settings')">⚙️ 设置</button>
       </div>
 
-      <div class="section-title">➕ 录入道具</div>
-      <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:20px">
-        <input type="text" id="propName" placeholder="道具名称">
-        <textarea id="propDesc" placeholder="道具描述"></textarea>
-        <button class="submit" onclick="addProp()">录入道具</button>
+      <!-- 搜索（最突出） -->
+      <div id="navSearch" class="nav-section show">
+        <div class="search-area">
+          <div class="search-title">🔍 搜索花园里的鲜花</div>
+          <div class="search-row">
+            <input type="text" id="searchKeyword" placeholder="输入花名或描述..." onkeydown="if(event.key==='Enter')searchProps()">
+            <button onclick="searchProps()">搜索</button>
+          </div>
+          <div class="search-result" id="searchResult">
+            <div class="empty">输入关键词，搜索全园鲜花</div>
+          </div>
+        </div>
       </div>
 
-      <div style="display:flex;gap:10px;margin-bottom:10px">
-        <input type="text" id="searchKeyword" placeholder="搜索道具..." style="flex:1">
-        <button class="submit" onclick="searchProps()" style="padding:10px;font-size:14px">搜索</button>
+      <!-- 我的鲜花 -->
+      <div id="navMyFlowers" class="nav-section">
+        <div class="section-title">🌷 我的鲜花</div>
+        <div class="props-list" id="propsList">
+          <p style="color:#b0a090;text-align:center;padding:20px">还没有鲜花，去录入吧 🌸</p>
+        </div>
       </div>
 
-      <div class="section-title">📋 我的道具</div>
-      <div class="props-list" id="propsList">
-        <p style="color:#999;text-align:center">暂无道具</p>
+      <!-- 录入鲜花 -->
+      <div id="navAdd" class="nav-section">
+        <div class="section-title">🌸 录入鲜花</div>
+        <div style="display:flex;flex-direction:column;gap:12px">
+          <input type="text" id="propName" placeholder="鲜花名称">
+          <textarea id="propDesc" placeholder="鲜花描述（颜色、香味、花语...）"></textarea>
+          <button class="submit" onclick="addProp()">🌸 录入到花园</button>
+        </div>
+      </div>
+
+      <!-- 设置 -->
+      <div id="navSettings" class="nav-section">
+        <div class="section-title">⚙️ 个人设置</div>
+        <div style="display:flex;flex-direction:column;gap:12px">
+          <div style="display:flex;gap:10px">
+            <input type="text" id="newUsername" placeholder="新用户名" style="flex:1">
+            <button class="submit" onclick="updateUsername()" style="padding:13px 18px;font-size:14px;white-space:nowrap">改名</button>
+          </div>
+          <div style="display:flex;gap:10px">
+            <input type="password" id="newPassword" placeholder="新密码" style="flex:1">
+            <button class="submit" onclick="updatePassword()" style="padding:13px 18px;font-size:14px;white-space:nowrap">改密码</button>
+          </div>
+        </div>
       </div>
     </div>
   </div>
 
   <script>
-    const API_BASE = window.location.origin;
+    const API = window.location.origin;
     let token = localStorage.getItem('token');
 
-    function switchTab(tab) {
-      document.getElementById('tabLogin').className = tab === 'login' ? 'active' : '';
-      document.getElementById('tabRegister').className = tab === 'register' ? 'active' : '';
-      document.getElementById('loginForm').className = tab === 'login' ? 'form' : 'form hidden';
-      document.getElementById('registerForm').className = tab === 'register' ? 'form' : 'form hidden';
+    function switchTab(t) {
+      ['login','register'].forEach(x => {
+        document.getElementById('tab'+x.charAt(0).toUpperCase()+x.slice(1)).className = t===x?'active':'';
+        document.getElementById(x+'Form').className = t===x?'form':'form hidden';
+      });
     }
+
+    function switchNav(n) {
+      document.querySelectorAll('.nav-tabs button').forEach(b => b.className='');
+      document.querySelector(`.nav-tabs button[onclick*="${n}"]`).className = 'active';
+      document.querySelectorAll('.nav-section').forEach(s => s.classList.remove('show'));
+      document.getElementById('nav'+n.charAt(0).toUpperCase()+n.slice(1)).classList.add('show');
+    }
+
+    function showMsg(el, text, ok) { el.textContent = text; el.className = 'msg' + (ok?' success':''); }
 
     async function handleLogin(e) {
       e.preventDefault();
-      const username = document.getElementById('loginUsername').value;
-      const password = document.getElementById('loginPassword').value;
-      const msg = document.getElementById('loginMsg');
-      msg.className = 'msg';
+      const u = document.getElementById('loginUsername').value, p = document.getElementById('loginPassword').value;
+      const msg = document.getElementById('loginMsg'); showMsg(msg, '登录中...');
       try {
-        const r = await fetch(API_BASE + '/api/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username, password }) });
+        const r = await fetch(API+'/api/login', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({username:u,password:p}) });
         const d = await r.json();
-        if (r.ok) { token = d.token; localStorage.setItem('token', d.token); showDashboard(d.user); }
-        else { msg.textContent = d.error; }
-      } catch(e) { msg.textContent = '网络错误'; }
+        if (r.ok) { token=d.token; localStorage.setItem('token', d.token); showDashboard(d.user); }
+        else showMsg(msg, d.error);
+      } catch(e) { showMsg(msg, '网络错误'); }
     }
 
     async function handleRegister(e) {
       e.preventDefault();
-      const username = document.getElementById('regUsername').value;
-      const password = document.getElementById('regPassword').value;
-      const msg = document.getElementById('regMsg');
-      msg.className = 'msg';
+      const u = document.getElementById('regUsername').value, p = document.getElementById('regPassword').value;
+      const msg = document.getElementById('regMsg'); showMsg(msg, '注册中...');
       try {
-        const r = await fetch(API_BASE + '/api/register', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username, password }) });
+        const r = await fetch(API+'/api/register', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({username:u,password:p}) });
         const d = await r.json();
-        if (r.ok) { token = d.token; localStorage.setItem('token', d.token); showDashboard(d.user); }
-        else { msg.textContent = d.error; }
-      } catch(e) { msg.textContent = '网络错误'; }
+        if (r.ok) { token=d.token; localStorage.setItem('token', d.token); showDashboard(d.user); }
+        else showMsg(msg, d.error);
+      } catch(e) { showMsg(msg, '网络错误'); }
     }
 
-    async function showDashboard(user) {
+    function showDashboard(user) {
       document.getElementById('authView').style.display = 'none';
       document.getElementById('dashboardView').classList.add('show');
       document.getElementById('displayName').textContent = user.username;
       document.getElementById('displayScore').textContent = user.score || 0;
-      document.getElementById('propsList').innerHTML = '<p style="color:#999;text-align:center">加载中...</p>';
       loadProps();
     }
 
-    function handleLogout() {
-      token = null; localStorage.removeItem('token');
-      document.getElementById('authView').style.display = 'block';
-      document.getElementById('dashboardView').classList.remove('show');
-    }
+    function handleLogout() { token=null; localStorage.removeItem('token'); document.getElementById('authView').style.display='block'; document.getElementById('dashboardView').classList.remove('show'); }
 
     async function loadProps() {
       try {
-        const r = await fetch(API_BASE + '/api/props/mine', { headers: { 'Authorization': 'Bearer ' + token } });
-        if (!r.ok) throw new Error();
-        const props = await r.json();
+        const r = await fetch(API+'/api/props/mine', { headers:{'Authorization':'Bearer '+token} });
+        if (!r.ok) throw Error();
         const list = document.getElementById('propsList');
-        if (!props.length) { list.innerHTML = '<p style="color:#999;text-align:center">暂无道具</p>'; return; }
+        const props = await r.json();
+        if (!props.length) { list.innerHTML = '<p style="color:#b0a090;text-align:center;padding:20px">还没有鲜花，去录入吧 🌸</p>'; return; }
         list.innerHTML = props.map(p => `
           <div class="prop-item">
             <div class="info">
-              <div class="name">${p.propName}</div>
+              <div class="name">🌷 ${p.propName}</div>
               <div class="desc">${p.propDesc}</div>
             </div>
             <button class="del" onclick="deleteProp(${p.id})">删除</button>
           </div>
         `).join('');
-      } catch(e) {
-        document.getElementById('propsList').innerHTML = '<p style="color:#e74c3c;text-align:center">加载失败</p>';
-      }
+      } catch(e) { document.getElementById('propsList').innerHTML = '<p style="color:#d4766a;text-align:center;padding:20px">加载失败</p>'; }
     }
 
     async function addProp() {
-      const name = document.getElementById('propName').value;
-      const desc = document.getElementById('propDesc').value;
-      if (!name || !desc) { alert('请填写完整'); return; }
+      const n = document.getElementById('propName').value, d = document.getElementById('propDesc').value;
+      if (!n || !d) { alert('请填写鲜花名称和描述'); return; }
       try {
-        const r = await fetch(API_BASE + '/api/props', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token }, body: JSON.stringify({ propName: name, propDesc: desc }) });
-        const d = await r.json();
-        if (r.ok) { document.getElementById('propName').value = ''; document.getElementById('propDesc').value = ''; loadProps(); }
-        else { alert(d.error); }
+        const r = await fetch(API+'/api/props', { method:'POST', headers:{'Content-Type':'application/json','Authorization':'Bearer '+token}, body:JSON.stringify({propName:n,propDesc:d}) });
+        const res = await r.json();
+        if (r.ok) { document.getElementById('propName').value=''; document.getElementById('propDesc').value=''; loadProps(); alert('🌸 鲜花已录入花园！'); switchNav('myFlowers'); }
+        else alert(res.error);
       } catch(e) { alert('网络错误'); }
     }
 
     async function deleteProp(id) {
-      if (!confirm('确定删除？')) return;
+      if (!confirm('确定要移除这朵花吗？')) return;
       try {
-        const r = await fetch(API_BASE + '/api/props/' + id, { method: 'DELETE', headers: { 'Authorization': 'Bearer ' + token } });
+        const r = await fetch(API+'/api/props/'+id, { method:'DELETE', headers:{'Authorization':'Bearer '+token} });
         if (r.ok) loadProps(); else alert('删除失败');
       } catch(e) { alert('网络错误'); }
     }
 
     async function searchProps() {
       const q = document.getElementById('searchKeyword').value.trim();
-      if (!q) { loadProps(); return; }
+      const box = document.getElementById('searchResult');
+      if (!q) { box.innerHTML = '<div class="empty">输入关键词，搜索全园鲜花</div>'; return; }
+      box.innerHTML = '<div class="empty">搜索中...</div>';
       try {
-        const r = await fetch(API_BASE + '/api/props/search?q=' + encodeURIComponent(q));
+        const r = await fetch(API+'/api/props/search?q='+encodeURIComponent(q));
         const props = await r.json();
-        const list = document.getElementById('propsList');
-        if (!props.length) { list.innerHTML = '<p style="color:#999;text-align:center">未找到匹配道具</p>'; return; }
-        list.innerHTML = props.map(p => `
-          <div class="prop-item">
-            <div class="info">
-              <div class="name">${p.propName} <span style="font-size:12px;color:#999">- ${p.ownerName || '未知'}</span></div>
-              <div class="desc">${p.propDesc}</div>
-            </div>
+        if (!props.length) { box.innerHTML = '<div class="empty">🌱 没有找到匹配的鲜花</div>'; return; }
+        box.innerHTML = props.map(p => `
+          <div class="item">
+            <div class="name">🌷 ${p.propName}</div>
+            <div class="desc">${p.propDesc}</div>
+            <div class="owner">👤 ${p.ownerName || '未知'}</div>
           </div>
         `).join('');
-      } catch(e) { alert('搜索失败'); }
+      } catch(e) { box.innerHTML = '<div class="empty">搜索失败</div>'; }
     }
 
     async function updateUsername() {
-      const name = document.getElementById('newUsername').value;
-      if (!name) { alert('请输入新用户名'); return; }
+      const n = document.getElementById('newUsername').value;
+      if (!n) { alert('请输入新用户名'); return; }
       try {
-        const r = await fetch(API_BASE + '/api/user/username', { method: 'PUT', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token }, body: JSON.stringify({ newUsername: name }) });
+        const r = await fetch(API+'/api/user/username', { method:'PUT', headers:{'Content-Type':'application/json','Authorization':'Bearer '+token}, body:JSON.stringify({newUsername:n}) });
         const d = await r.json();
-        if (r.ok) { token = d.token; localStorage.setItem('token', d.token); document.getElementById('displayName').textContent = name; document.getElementById('newUsername').value = ''; alert('用户名已更新'); }
-        else { alert(d.error); }
+        if (r.ok) { token=d.token; localStorage.setItem('token',d.token); document.getElementById('displayName').textContent=n; document.getElementById('newUsername').value=''; alert('✅ 用户名已更新'); }
+        else alert(d.error);
       } catch(e) { alert('网络错误'); }
     }
 
     async function updatePassword() {
-      const pwd = document.getElementById('newPassword').value;
-      if (!pwd) { alert('请输入新密码'); return; }
+      const p = document.getElementById('newPassword').value;
+      if (!p) { alert('请输入新密码'); return; }
       try {
-        const r = await fetch(API_BASE + '/api/user/password', { method: 'PUT', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token }, body: JSON.stringify({ newPassword: pwd }) });
+        const r = await fetch(API+'/api/user/password', { method:'PUT', headers:{'Content-Type':'application/json','Authorization':'Bearer '+token}, body:JSON.stringify({newPassword:p}) });
         const d = await r.json();
-        if (r.ok) { document.getElementById('newPassword').value = ''; alert('密码已更新'); }
-        else { alert(d.error); }
+        if (r.ok) { document.getElementById('newPassword').value=''; alert('✅ 密码已更新'); }
+        else alert(d.error);
       } catch(e) { alert('网络错误'); }
     }
 
     // 自动登录
     if (token) {
-      fetch(API_BASE + '/api/user/profile', { headers: { 'Authorization': 'Bearer ' + token } })
-        .then(r => r.json()).then(u => { if (u.id) showDashboard(u); else { token = null; localStorage.removeItem('token'); } })
-        .catch(() => { token = null; localStorage.removeItem('token'); });
+      fetch(API+'/api/user/profile', { headers:{'Authorization':'Bearer '+token} })
+        .then(r=>r.json()).then(u=>{ if(u.id) showDashboard(u); else { token=null; localStorage.removeItem('token'); } })
+        .catch(()=>{ token=null; localStorage.removeItem('token'); });
     }
   </script>
 </body>
