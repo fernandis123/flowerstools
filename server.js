@@ -72,23 +72,24 @@ function initJsonStorage() {
     fs.writeFileSync(DB_FILE, JSON.stringify({ users: [], props: [] }, null, 2));
     console.log('✅ 已创建 data.json 文件');
   } else {
+    // 兼容旧版 data.json（没有 props 字段）
     try {
       const data = JSON.parse(fs.readFileSync(DB_FILE, 'utf8'));
       if (!data.props) {
         data.props = [];
         fs.writeFileSync(DB_FILE, JSON.stringify(data, null, 2));
       }
-    } catch (e) { /* ignore */ }
+    } catch { }
     console.log('✅ data.json 已存在');
   }
 }
 
+// ===== JSON 工具函数 =====
 function readData() {
   try {
     return JSON.parse(fs.readFileSync(DB_FILE, 'utf8'));
-  } catch (e) { return { users: [], props: [] }; }
+  } catch { return { users: [], props: [] }; }
 }
-
 function writeData(data) {
   fs.writeFileSync(DB_FILE, JSON.stringify(data, null, 2));
 }
@@ -107,6 +108,7 @@ function authenticateToken(req, res, next) {
 
 // ==================== 用户接口 ====================
 
+// 注册
 app.post('/api/register', async (req, res) => {
   try {
     const { username, password } = req.body;
@@ -138,6 +140,7 @@ app.post('/api/register', async (req, res) => {
   }
 });
 
+// 登录
 app.post('/api/login', async (req, res) => {
   try {
     const { username, password } = req.body;
@@ -163,6 +166,7 @@ app.post('/api/login', async (req, res) => {
   }
 });
 
+// 获取用户信息 (profile)
 app.get('/api/user/profile', authenticateToken, async (req, res) => {
   try {
     if (useJsonFallback) {
@@ -181,6 +185,7 @@ app.get('/api/user/profile', authenticateToken, async (req, res) => {
   }
 });
 
+// 修改用户名
 app.put('/api/user/username', authenticateToken, async (req, res) => {
   try {
     const { newUsername } = req.body;
@@ -209,6 +214,7 @@ app.put('/api/user/username', authenticateToken, async (req, res) => {
   }
 });
 
+// 修改密码
 app.put('/api/user/password', authenticateToken, async (req, res) => {
   try {
     const { newPassword } = req.body;
@@ -234,6 +240,7 @@ app.put('/api/user/password', authenticateToken, async (req, res) => {
 
 // ==================== 道具接口 ====================
 
+// 录入道具
 app.post('/api/props', authenticateToken, async (req, res) => {
   try {
     const { propName, propDesc } = req.body;
@@ -266,6 +273,7 @@ app.post('/api/props', authenticateToken, async (req, res) => {
   }
 });
 
+// 获取我的道具列表
 app.get('/api/props/mine', authenticateToken, async (req, res) => {
   try {
     if (useJsonFallback) {
@@ -278,9 +286,14 @@ app.get('/api/props/mine', authenticateToken, async (req, res) => {
         'SELECT id, user_id, prop_name, prop_desc, created_at FROM props WHERE user_id = $1 ORDER BY created_at DESC',
         [req.user.id]
       );
+      // 转换成前端期望的字段名
       const props = result.rows.map(r => ({
-        id: r.id, userId: r.user_id, ownerName: req.user.username,
-        propName: r.prop_name, propDesc: r.prop_desc, createdAt: r.created_at
+        id: r.id,
+        userId: r.user_id,
+        ownerName: req.user.username,
+        propName: r.prop_name,
+        propDesc: r.prop_desc,
+        createdAt: r.created_at
       }));
       return res.json(props);
     }
@@ -290,9 +303,11 @@ app.get('/api/props/mine', authenticateToken, async (req, res) => {
   }
 });
 
+// 删除道具
 app.delete('/api/props/:id', authenticateToken, async (req, res) => {
   try {
     const propId = parseInt(req.params.id);
+
     if (useJsonFallback) {
       const data = readData();
       const idx = data.props.findIndex(p => p.id === propId && p.userId === req.user.id);
@@ -301,7 +316,10 @@ app.delete('/api/props/:id', authenticateToken, async (req, res) => {
       writeData(data);
       return res.json({ message: '道具已删除' });
     } else {
-      const result = await pool.query('DELETE FROM props WHERE id = $1 AND user_id = $2 RETURNING id', [propId, req.user.id]);
+      const result = await pool.query(
+        'DELETE FROM props WHERE id = $1 AND user_id = $2 RETURNING id',
+        [propId, req.user.id]
+      );
       if (result.rows.length === 0) return res.status(404).json({ error: '道具不存在或无权删除' });
       return res.json({ message: '道具已删除' });
     }
@@ -311,6 +329,7 @@ app.delete('/api/props/:id', authenticateToken, async (req, res) => {
   }
 });
 
+// 搜索道具（跨用户）
 app.get('/api/props/search', async (req, res) => {
   try {
     const keyword = (req.query.q || '').trim();
@@ -325,12 +344,19 @@ app.get('/api/props/search', async (req, res) => {
       return res.json(results);
     } else {
       const result = await pool.query(
-        'SELECT p.id, p.user_id, p.prop_name, p.prop_desc, p.created_at, u.username as owner_name FROM props p JOIN users u ON p.user_id = u.id WHERE p.prop_name ILIKE $1 OR p.prop_desc ILIKE $1 ORDER BY p.created_at DESC',
-        ['%' + keyword + '%']
+        `SELECT p.id, p.user_id, p.prop_name, p.prop_desc, p.created_at, u.username as owner_name
+         FROM props p JOIN users u ON p.user_id = u.id
+         WHERE p.prop_name ILIKE $1 OR p.prop_desc ILIKE $1
+         ORDER BY p.created_at DESC`,
+        [`%${keyword}%`]
       );
       const props = result.rows.map(r => ({
-        id: r.id, userId: r.user_id, ownerName: r.owner_name,
-        propName: r.prop_name, propDesc: r.prop_desc, createdAt: r.created_at
+        id: r.id,
+        userId: r.user_id,
+        ownerName: r.owner_name,
+        propName: r.prop_name,
+        propDesc: r.prop_desc,
+        createdAt: r.created_at
       }));
       return res.json(props);
     }
@@ -340,7 +366,7 @@ app.get('/api/props/search', async (req, res) => {
   }
 });
 
-// ===== 排行榜 =====
+// ===== 排行榜（保留） =====
 app.get('/api/ranking', async (req, res) => {
   try {
     if (useJsonFallback) {
