@@ -56,6 +56,23 @@
     .prop-item .del { background: #d4a8a0; color: white; border: none; padding: 6px 14px; border-radius: 8px; cursor: pointer; font-size: 12px; transition: background 0.3s; }
     .prop-item .del:hover { background: #c4978f; }
     .section-title { font-size: 16px; color: #5a4a3a; margin: 0 0 12px 0; font-weight: 600; }
+    /* === 手机端适配 === */
+@media (max-width: 480px) {
+  .container { padding: 20px 18px; }
+  h1 { font-size: 22px; }
+  .nav-tabs { flex-wrap: wrap; gap: 6px; }
+  .nav-tabs button { font-size: 13px; padding: 9px 6px; min-width: 0; flex: 1 1 auto; }
+  .search-row { flex-direction: column; gap: 8px; }
+  .search-row button { width: 100%; text-align: center; }
+  .search-area { padding: 15px; }
+  .user-info { flex-direction: column; text-align: center; gap: 10px; }
+  .user-info .left p { font-size: 13px; }
+  .logout { align-self: center; }
+  #navSettings div[style*="display:flex"] { flex-direction: column; }
+  #navSettings button { width: 100%; }
+  .prop-item { flex-direction: column; gap: 8px; text-align: center; }
+  .prop-item .del { width: 100%; }
+}
   </style>
 </head>
 <body>
