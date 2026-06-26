@@ -162,7 +162,7 @@ app.post('/api/props', auth, async (req, res) => {
   try {
     const { propName, propDesc } = req.body;
     if (!propName) return res.status(400).json({ error: '请输入道具名称' });
-    if (!propDesc) return res.status(400).json({ error: '请输入道具描述' });
+    if (!propDesc) propDesc = '';  // 描述选填
     if (useJson) {
       const d = readDB();
       const np = { id: d.props.length + 1, userId: req.user.id, ownerName: req.user.username, propName, propDesc, createdAt: new Date().toISOString() };
