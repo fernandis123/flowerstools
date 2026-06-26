@@ -384,6 +384,10 @@ app.get('/api/ranking', async (req, res) => {
     res.status(500).json({ error: '服务器错误' });
   }
 });
+// ===== 兜底路由：确保根路径返回 index.html =====
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
 
 // ===== 启动服务器 =====
 async function start() {
