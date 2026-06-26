@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>数字化工具 · 云端版</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        :root {
+            --primary: #4F6EF7; --primary-dark: #3A56D4; --primary-light: #EEF1FF;
+            --success: #34C759; --warning: #FF9500; --danger: #FF3B30;
+            --bg: #F5F7FA; --card-bg: #FFFFFF; --text: #1D1D2C;
+            --text-secondary: #8E8EA0; --border: #EDEDF0;
+            --radius: 16px; --radius-sm: 10px; --shadow: 0 2px 12px rgba(0,0,0,0.06);
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Helvetica Neue", "Microsoft YaHei", sans-serif;
+            background: var(--bg); color: var(--text); font-size: 16px; line-height: 1.5; min-height: 100vh;
+        }
+        .page { display: none; padding: 16px; padding-bottom: 100px; max-width: 480px; margin: 0 auto; animation: fadeIn 0.25s ease; }
+        .page.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+        .login-wrap { display: flex; flex-direction: column; justify-content: center; min-height: 85vh; padding: 24px; }
+        .login-logo { font-size: 48px; text-align: center; margin-bottom: 8px; }
+        .login-title { font-size: 28px; font-weight: 700; text-align: center; margin-bottom: 4px; }
+        .login-sub { color: var(--text-secondary); text-align: center; margin-bottom: 32px; font-size: 15px; }
+        .login-box { background: var(--card-bg); border-radius: var(--radius); padding: 28px 20px; box-shadow: var(--shadow); }
+        .login-box .form-group { margin-bottom: 18px; }
+        .login-box label { display: block; font-size: 14px; font-weight: 600; margin-bottom: 6px; color: var(--text); }
+        .login-box input { width: 100%; padding: 14px 16px; border: 1.5px solid var(--border); border-radius: var(--radius-sm); font-size: 16px; background: var(--bg); transition: 0.2s; outline: none; }
+        .login-box input:focus { border-color: var(--primary); background: #fff; box-shadow: 0 0 0 3px rgba(79,110,247,0.12); }
+        .login-actions { display: flex; gap: 12px; margin-top: 24px; }
+        .login-actions button { flex: 1; }
+        .login-tip { text-align: center; margin-top: 16px; font-size: 14px; color: var(--text-secondary); }
+        .btn { display: inline-flex; align-items: center; justify-content: center; padding: 14px 24px; border: none; border-radius: var(--radius-sm); font-size: 16px; font-weight: 600; cursor: pointer; transition: 0.2s; user-select: none; min-height: 48px; }
+        .btn-primary { background: var(--primary); color: #fff; }
+        .btn-primary:active { background: var(--primary-dark); transform: scale(0.98); }
+        .btn-primary:disabled { background: #a0b0f0; cursor: not-allowed; }
+        .btn-outline { background: transparent; color: var(--primary); border: 1.5px solid var(--primary); }
+        .btn-outline:active { background: var(--primary-light); }
+        .btn-sm { padding: 10px 16px; font-size: 14px; min-height: 38px; }
+        .btn-block { width: 100%; }
+        .bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; background: var(--card-bg); border-top: 1px solid var(--border); display: none; justify-content: space-around; padding: 6px 0 env(safe-area-inset-bottom, 8px) 0; z-index: 100; box-shadow: 0 -2px 10px rgba(0,0,0,0.04); max-width: 480px; margin: 0 auto; }
+        .bottom-nav.show { display: flex; }
+        .nav-item { display: flex; flex-direction: column; align-items: center; padding: 6px 16px; border: none; background: none; cursor: pointer; font-size: 11px; color: var(--text-secondary); transition: 0.2s; min-width: 60px; }
+        .nav-item .nav-icon { font-size: 24px; margin-bottom: 2px; }
+        .nav-item.active { color: var(--primary); font-weight: 600; }
+        .nav-item:active { transform: scale(0.92); }
+        .card { background: var(--card-bg); border-radius: var(--radius); padding: 20px; margin-bottom: 16px; box-shadow: var(--shadow); }
+        .card-title { font-size: 17px; font-weight: 700; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+        .card-title .icon { font-size: 22px; }
+        .form-group { margin-bottom: 16px; }
+        .form-group label { display: block; font-size: 14px; font-weight: 600; margin-bottom: 6px; color: var(--text); }
+        .form-group input, .form-group textarea { width: 100%; padding: 12px 14px; border: 1.5px solid var(--border); border-radius: var(--radius-sm); font-size: 15px; background: var(--bg); transition: 0.2s; outline: none; font-family: inherit; }
+        .form-group textarea { min-height: 120px; resize: vertical; line-height: 1.6; }
+        .form-group input:focus, .form-group textarea:focus { border-color: var(--primary); background: #fff; box-shadow: 0 0 0 3px rgba(79,110,247,0.12); }
+        .form-hint { font-size: 12px; color: var(--text-secondary); margin-top: 4px; }
+        .prop-item { background: var(--bg); border-radius: var(--radius-sm); padding: 14px 16px; margin-bottom: 10px; border-left: 4px solid var(--primary); }
+        .prop-item .prop-name { font-weight: 700; font-size: 16px; margin-bottom: 4px; }
+        .prop-item .prop-desc { color: var(--text-secondary); font-size: 14px; line-height: 1.6; white-space: pre-wrap; word-break: break-all; }
+        .prop-item .prop-meta { font-size: 12px; color: var(--text-secondary); margin-top: 6px; display: flex; justify-content: space-between; }
+        .prop-item .prop-del { color: var(--danger); font-size: 13px; border: none; background: none; cursor: pointer; padding: 4px 8px; }
+        .result-item { background: var(--bg); border-radius: var(--radius-sm); padding: 14px 16px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; }
+        .result-item .user-info { font-weight: 600; }
+        .result-item .user-props { color: var(--text-secondary); font-size: 13px; }
+        .result-empty { text-align: center; padding: 40px 20px; color: var(--text-secondary); }
+        .result-empty .big-icon { font-size: 48px; margin-bottom: 12px; }
+        .toast-container { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); z-index: 999; display: flex; flex-direction: column; gap: 8px; align-items: center; pointer-events: none; max-width: 90%; }
+        .toast { background: rgba(0,0,0,0.78); color: #fff; padding: 12px 24px; border-radius: 24px; font-size: 14px; backdrop-filter: blur(8px); animation: toastIn 0.3s ease, toastOut 0.3s ease 2.2s forwards; text-align: center; max-width: 360px; pointer-events: auto; }
+        .toast.success { background: rgba(52,199,89,0.9); }
+        .toast.error { background: rgba(255,59,48,0.9); }
+        .toast.warning { background: rgba(255,149,0,0.9); }
+        @keyframes toastIn { from { opacity: 0; transform: translateY(-20px) scale(0.9); } to { opacity: 1; transform: translateY(0) scale(1); } }
+        @keyframes toastOut { from { opacity: 1; transform: translateY(0) scale(1); } to { opacity: 0; transform: translateY(-10px) scale(0.95); } }
+        .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 200; display: none; align-items: center; justify-content: center; padding: 24px; backdrop-filter: blur(2px); }
+        .modal-overlay.show { display: flex; }
+        .modal-box { background: var(--card-bg); border-radius: var(--radius); padding: 24px; width: 100%; max-width: 420px; max-height: 80vh; overflow-y: auto; animation: modalIn 0.25s ease; }
+        @keyframes modalIn { from { opacity: 0; transform: scale(0.92); } to { opacity: 1; transform: scale(1); } }
+        .modal-title { font-size: 18px; font-weight: 700; margin-bottom: 16px; text-align: center; }
+        .modal-actions { display: flex; gap: 12px; margin-top: 20px; }
+        .modal-actions button { flex: 1; }
+        .badge { display: inline-block; background: var(--primary-light); color: var(--primary); font-size: 12px; padding: 2px 10px; border-radius: 20px; font-weight: 600; }
+        .badge-success { background: #E8F8EE; color: var(--success); }
+        .search-bar { display: flex; gap: 8px; margin-bottom: 16px; }
+        .search-bar input { flex: 1; padding: 12px 16px; border: 1.5px solid var(--border); border-radius: var(--radius-sm); font-size: 15px; background: var(--card-bg); outline: none; transition: 0.2s; }
+        .search-bar input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(79,110,247,0.12); }
+        .search-bar button { padding: 12px 20px; }
+        .loading-spinner { display: inline-block; width: 20px; height: 20px; border: 3px solid rgba(255,255,255,0.3); border-top-color: #fff; border-radius: 50%; animation: spin 0.6s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .server-bar { position: fixed; top: 0; left: 0; right: 0; background: #E8F8EE; color: #1a6d3a; font-size: 13px; text-align: center; padding: 8px 16px; z-index: 300; display: none; }
+        .server-bar.show { display: block; }
+        .server-bar .dot { display: inline-block; width: 8px; height: 8px; background: var(--success); border-radius: 50%; margin-right: 6px; animation: blink 1.2s infinite; }
+        @keyframes blink { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
+        @supports (padding-top: env(safe-area-inset-top)) { .bottom-nav { padding-bottom: calc(8px + env(safe-area-inset-bottom)); } }
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-thumb { background: #ccc; border-radius: 2px; }
+    </style>
+</head>
+<body>
+
+<div class="server-bar" id="serverBar"><span class="dot"></span> 已连接到服务器</div>
+<div class="toast-container" id="toastContainer"></div>
+
+<div class="modal-overlay" id="modalOverlay">
+    <div class="modal-box" id="modalBox">
+        <div class="modal-title" id="modalTitle">提示</div>
+        <div id="modalBody"></div>
+        <div class="modal-actions" id="modalActions"></div>
+    </div>
+</div>
+
+<div class="page active" id="pageLogin">
+    <div class="login-wrap">
+        <div class="login-logo">🎮</div>
+        <div class="login-title">数字化工具</div>
+        <div class="login-sub">云端多用户 · 道具共享检索</div>
+        <div class="login-box">
+            <div class="form-group">
+                <label>用户名</label>
+                <input type="text" id="loginUsername" placeholder="请输入用户名">
+            </div>
+            <div class="form-group">
+                <label>密码</label>
+                <input type="password" id="loginPassword" placeholder="请输入密码">
+            </div>
+            <div class="login-actions">
+                <button class="btn btn-primary" id="loginBtn" onclick="handleLogin()">登 录</button>
+                <button class="btn btn-outline" id="registerBtn" onclick="handleRegister()">注 册</button>
+            </div>
+            <div class="login-tip">
+                💡 所有数据存储在服务器，多用户互通
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="page" id="pageHome">
+    <div id="tabManage">
+        <div class="card">
+            <div class="card-title"><span class="icon">👤</span> 用户信息</div>
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+                <div>
+                    <div style="font-size:18px;font-weight:700;" id="displayUsername"></div>
+                    <div style="font-size:13px;color:var(--text-secondary);margin-top:2px;">🆔 <span id="displayUserId"></span></div>
+                </div>
+                <button class="btn btn-outline btn-sm" onclick="showEditProfile()">修改资料</button>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-title"><span class="icon">📦</span> 录入道具信息</div>
+            <div class="form-group">
+                <label>道具名称</label>
+                <input type="text" id="propName" placeholder="例：花、能量石、魔法药水...">
+            </div>
+            <div class="form-group">
+                <label>道具描述（长文本）</label>
+                <textarea id="propDesc" placeholder="详细描述你的道具信息&#10;例如：&#10;· 红色玫瑰花 xxx 个&#10;· 获得时间：2024年春季&#10;· 用途：可赠送增加好感度"></textarea>
+                <div class="form-hint">支持多行文本，数据实时存入服务器</div>
+            </div>
+            <button class="btn btn-primary btn-block" id="addPropBtn" onclick="addProp()">➕ 录入道具</button>
+        </div>
+
+        <div class="card">
+            <div class="card-title"><span class="icon">🎒</span> 我的道具 <span class="badge" id="propCount">0</span></div>
+            <div id="myPropList"><div class="result-empty"><div class="big-icon">🔄</div>加载中...</div></div>
+        </div>
+    </div>
+
+    <div id="tabSearch" style="display:none;">
+        <div class="card">
+            <div class="card-title"><span class="icon">🔍</span> 跨用户道具检索</div>
+            <div class="search-bar">
+                <input type="text" id="searchInput" placeholder="输入道具名称搜索..." onkeydown="if(event.key==='Enter') searchProps()">
+                <button class="btn btn-primary btn-sm" id="searchBtn" onclick="searchProps()">搜索</button>
+            </div>
+            <div style="font-size:13px;color:var(--text-secondary);">
+                🌐 搜索所有用户的道具数据
+            </div>
+        </div>
+        <div id="searchResult"></div>
+    </div>
+</div>
+
+<div class="bottom-nav" id="bottomNav">
+    <button class="nav-item active" onclick="switchTab('manage')">
+        <span class="nav-icon">📋</span>
+        <span>信息管理</span>
+    </button>
+    <button class="nav-item" onclick="switchTab('search')">
+        <span class="nav-icon">🔍</span>
+        <span>信息检索</span>
+    </button>
+</div>
+
+<script>
+const API_BASE = window.location.origin;
+let token = localStorage.getItem('token');
+let currentUsername = localStorage.getItem('username');
+
+// 自动登录检查
+if (token && currentUsername) {
+    checkLogin();
+}
+
+async function api(path, options = {}) {
+    const headers = { 'Content-Type': 'application/json' };
+    if (token) headers['Authorization'] = 'Bearer ' + token;
+    const res = await fetch(API_BASE + path, { ...options, headers });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || '请求失败');
+    return data;
+}
+
+async function checkLogin() {
+    try {
+        await api('/api/user/profile');
+        document.getElementById('serverBar').classList.add('show');
+        enterHome();
+    } catch(e) {
+        localStorage.removeItem('token');
+        localStorage.removeItem('username');
+        token = null;
+        currentUsername = null;
+    }
+}
+
+function showToast(msg, type = '') {
+    const c = document.getElementById('toastContainer');
+    const el = document.createElement('div'); el.className = 'toast ' + type; el.textContent = msg;
+    c.appendChild(el);
+    setTimeout(() => { if (el.parentNode) el.remove(); }, 2500);
+}
+
+function showModal(title, bodyHTML, actionsHTML = '') {
+    document.getElementById('modalTitle').textContent = title;
+    document.getElementById('modalBody').innerHTML = bodyHTML;
+    const ae = document.getElementById('modalActions');
+    if (actionsHTML) { ae.innerHTML = actionsHTML; ae.style.display = 'flex'; }
+    else { ae.innerHTML = '<button class="btn btn-primary" onclick="closeModal()">确定</button>'; ae.style.display = 'flex'; }
+    document.getElementById('modalOverlay').classList.add('show');
+}
+function closeModal() { document.getElementById('modalOverlay').classList.remove('show'); }
+function esc(s) { if (!s) return ''; const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+
+function setLoading(btnId, loading) {
+    const btn = document.getElementById(btnId);
+    if (loading) { btn.disabled = true; btn.innerHTML = '<span class="loading-spinner"></span>'; }
+    else {
+        btn.disabled = false;
+        const texts = { loginBtn: '登 录', registerBtn: '注 册', addPropBtn: '➕ 录入道具', searchBtn: '搜索' };
+        btn.textContent = texts[btnId] || '确定';
+    }
+}
+
+async function handleLogin() {
+    const u = document.getElementById('loginUsername').value.trim();
+    const p = document.getElementById('loginPassword').value.trim();
+    if (!u || !p) { showToast('请填写用户名和密码', 'warning'); return; }
+    setLoading('loginBtn', true);
+    try {
+        const data = await api('/api/login', { method: 'POST', body: JSON.stringify({ username: u, password: p }) });
+        token = data.token; currentUsername = data.username;
+        localStorage.setItem('token', token);
+        localStorage.setItem('username', currentUsername);
+        document.getElementById('serverBar').classList.add('show');
+        showToast('登录成功！🎉', 'success');
+        enterHome();
+    } catch(e) { showToast(e.message, 'error'); }
+    setLoading('loginBtn', false);
+}
+
+async function handleRegister() {
+    const u = document.getElementById('loginUsername').value.trim();
+    const p = document.getElementById('loginPassword').value.trim();
+    if (!u || !p) { showToast('请填写用户名和密码', 'warning'); return; }
+    if (u.length < 2) { showToast('用户名至少2个字符', 'warning'); return; }
+    if (p.length < 3) { showToast('密码至少3个字符', 'warning'); return; }
+    setLoading('registerBtn', true);
+    try {
+        const data = await api('/api/register', { method: 'POST', body: JSON.stringify({ username: u, password: p }) });
+        token = data.token; currentUsername = data.username;
+        localStorage.setItem('token', token);
+        localStorage.setItem('username', currentUsername);
+        document.getElementById('serverBar').classList.add('show');
+        showToast('注册成功！🎉', 'success');
+        enterHome();
+    } catch(e) { showToast(e.message, 'error'); }
+    setLoading('registerBtn', false);
+}
+
+function enterHome() {
+    document.getElementById('pageLogin').classList.remove('active');
+    document.getElementById('pageHome').classList.add('active');
+    document.getElementById('bottomNav').classList.add('show');
+    refreshHome();
+    loadMyProps();
+}
+
+function logout() {
+    localStorage.removeItem('token');
+    localStorage.removeItem('username');
+    token = null; currentUsername = null;
+    document.getElementById('pageHome').classList.remove('active');
+    document.getElementById('bottomNav').classList.remove('show');
+    document.getElementById('pageLogin').classList.add('active');
+    document.getElementById('loginPassword').value = '';
+    showToast('已退出登录', '');
+}
+
+function refreshHome() {
+    document.getElementById('displayUsername').textContent = currentUsername;
+    document.getElementById('displayUserId').textContent = currentUsername;
+}
+
+function switchTab(tab) {
+    const m = document.getElementById('tabManage');
+    const s = document.getElementById('tabSearch');
+    const ni = document.querySelectorAll('.nav-item');
+    if (tab === 'manage') {
+        m.style.display = 'block'; s.style.display = 'none';
+        ni[0].classList.add('active'); ni[1].classList.remove('active');
+        refreshHome(); loadMyProps();
+    } else {
+        m.style.display = 'none'; s.style.display = 'block';
+        ni[0].classList.remove('active'); ni[1].classList.add('active');
+        document.getElementById('searchResult').innerHTML = '';
+    }
+}
+
+function showEditProfile() {
+    const body = `
+        <div class="form-group"><label>新用户名</label><input type="text" id="editUsername" value="${currentUsername}" placeholder="输入新用户名"></div>
+        <div class="form-group"><label>新密码</label><input type="password" id="editPassword" placeholder="输入新密码（留空不修改）"></div>
+        <div style="margin-top:8px;font-size:13px;color:var(--text-secondary);">💡 修改用户名后，下次登录请使用新用户名</div>`;
+    const actions = '<button class="btn btn-outline" onclick="closeModal()">取消</button><button class="btn btn-primary" onclick="saveProfile()">保存修改</button>';
+    showModal('修改资料', body, actions);
+}
+
+async function saveProfile() {
+    const nu = document.getElementById('editUsername').value.trim();
+    const np = document.getElementById('editPassword').value.trim();
+    if (!nu) { showToast('用户名不能为空', 'warning'); return; }
+    try {
+        if (nu !== currentUsername) {
+            const data = await api('/api/user/username', { method: 'PUT', body: JSON.stringify({ newUsername: nu }) });
+            token = data.token;
+            localStorage.setItem('token', token);
+        }
+        if (np) {
+            await api('/api/user/password', { method: 'PUT', body: JSON.stringify({ newPassword: np }) });
+        }
+        currentUsername = nu;
+        localStorage.setItem('username', currentUsername);
+        closeModal(); refreshHome();
+        showToast('资料修改成功 ✅', 'success');
+    } catch(e) { showToast(e.message, 'error'); }
+}
+
+async function addProp() {
+    const n = document.getElementById('propName').value.trim();
+    const d = document.getElementById('propDesc').value.trim();
+    if (!n) { showToast('请输入道具名称', 'warning'); return; }
+    if (!d) { showToast('请输入道具描述', 'warning'); return; }
+    setLoading('addPropBtn', true);
+    try {
+        await api('/api/props', { method: 'POST', body: JSON.stringify({ propName: n, propDesc: d }) });
+        document.getElementById('propName').value = '';
+        document.getElementById('propDesc').value = '';
+        showToast('道具录入成功 🎉', 'success');
+        loadMyProps();
+    } catch(e) { showToast(e.message, 'error'); }
+    setLoading('addPropBtn', false);
+}
+
+async function loadMyProps() {
+    const listEl = document.getElementById('myPropList');
+    const countEl = document.getElementById('propCount');
+    listEl.innerHTML = '<div class="result-empty"><div class="big-icon">🔄</div>加载中...</div>';
+    try {
+        const props = await api('/api/props/mine');
+        if (props.length === 0) {
+            listEl.innerHTML = '<div class="result-empty"><div class="big-icon">📭</div>还没有录入任何道具</div>';
+            countEl.textContent = '0';
+            return;
+        }
+        countEl.textContent = props.length;
+        let html = '';
+        props.forEach(p => {
+            const time = p.createdAt ? new Date(p.createdAt).toLocaleString('zh-CN') : '未知';
+            html += `<div class="prop-item"><div class="prop-name">🎯 ${esc(p.propName)}</div><div class="prop-desc">${esc(p.propDesc)}</div><div class="prop-meta"><span>🕐 ${time}</span><button class="prop-del" onclick="deleteProp(${p.id})">🗑 删除</button></div></div>`;
+        });
+        listEl.innerHTML = html;
+    } catch(e) {
+        listEl.innerHTML = '<div class="result-empty"><div class="big-icon">❌</div>加载失败: ' + esc(e.message) + '</div>';
+    }
+}
+
+async function deleteProp(id) {
+    if (!confirm('确定删除？')) return;
+    try {
+        await api('/api/props/' + id, { method: 'DELETE' });
+        showToast('已删除', '');
+        loadMyProps();
+    } catch(e) { showToast(e.message, 'error'); }
+}
+
+async function searchProps() {
+    const kw = document.getElementById('searchInput').value.trim();
+    if (!kw) { showToast('请输入要搜索的道具名称', 'warning'); return; }
+    setLoading('searchBtn', true);
+    try {
+        const results = await api('/api/props/search?q=' + encodeURIComponent(kw));
+        const container = document.getElementById('searchResult');
+        if (results.length === 0) {
+            container.innerHTML = `<div class="card"><div class="result-empty"><div class="big-icon">🔍</div><div>未找到包含 "<strong>${esc(kw)}</strong>" 的道具</div><div style="font-size:13px;margin-top:8px;">换个关键词试试</div></div></div>`;
+            setLoading('searchBtn', false);
+            return;
+        }
+        const grouped = {};
+        results.forEach(r => {
+            if (!grouped[r.ownerName]) grouped[r.ownerName] = [];
+            grouped[r.ownerName].push(r);
+        });
+        let html = `<div class="card"><div class="card-title"><span class="icon">📋</span> 检索结果</div><div style="font-size:14px;color:var(--text-secondary);margin-bottom:12px;">搜索 "<strong>${esc(kw)}</strong>" · 共 <strong>${results.length}</strong> 条匹配，<strong>${Object.keys(grouped).length}</strong> 位用户</div>`;
+        Object.keys(grouped).forEach(un => {
+            const items = grouped[un];
+            const pns = [...new Set(items.map(i => i.propName))].join('、');
+            html += `<div class="result-item"><div><div class="user-info">👤 ${esc(un)}</div><div class="user-props">拥有: ${esc(pns)} (${items.length}条)</div></div><span class="badge badge-success">✓ 已匹配</span></div>`;
+        });
+        html += '</div><div class="card"><div class="card-title"><span class="icon">📄</span> 详细匹配记录</div>';
+        results.forEach(r => {
+            html += `<div class="prop-item"><div class="prop-name">👤 ${esc(r.ownerName)} · 🎯 ${esc(r.propName)}</div><div class="prop-desc">${esc(r.propDesc)}</div></div>`;
+        });
+        html += '</div>';
+        container.innerHTML = html;
+    } catch(e) {
+        document.getElementById('searchResult').innerHTML = `<div class="card"><div class="result-empty"><div class="big-icon">❌</div>检索失败: ${esc(e.message)}</div></div>`;
+    }
+    setLoading('searchBtn', false);
+}
+</script>
+</body>
+</html>
