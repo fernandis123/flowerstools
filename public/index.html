@@ -122,13 +122,13 @@
       <!-- 搜索（最突出） -->
       <div id="navSearch" class="nav-section show">
         <div class="search-area">
-          <div class="search-title">🔍 搜索花园里的鲜花</div>
+          <div class="search-title">🔍 搜索花园花友</div>
           <div class="search-row">
-            <input type="text" id="searchKeyword" placeholder="输入花名或描述..." onkeydown="if(event.key==='Enter')searchProps()">
-            <button onclick="searchProps()">搜索</button>
+            <input type="text" id="searchKeyword" placeholder="输入花名或花友名..." onkeydown="if(event.key==='Enter')searchProps()">
+            <button onclick="searchUsers()">搜索</button>
           </div>
-          <div class="search-result" id="searchResult">
-            <div class="empty">输入关键词，搜索全园鲜花</div>
+          <div class="search-result" id="searchResult" style="max-height:none">
+            <div class="empty">加载中...</div>
           </div>
         </div>
       </div>
@@ -260,23 +260,34 @@
       } catch(e) { alert('网络错误'); }
     }
 
-    async function searchProps() {
+    async function searchUsers() {
       const q = document.getElementById('searchKeyword').value.trim();
       const box = document.getElementById('searchResult');
-      if (!q) { box.innerHTML = '<div class="empty">输入关键词，搜索全园鲜花</div>'; return; }
-      box.innerHTML = '<div class="empty">搜索中...</div>';
+      box.innerHTML = '<div class="empty">加载中...</div>';
       try {
-        const r = await fetch(API+'/api/props/search?q='+encodeURIComponent(q));
-        const props = await r.json();
-        if (!props.length) { box.innerHTML = '<div class="empty">🌱 没有找到匹配的鲜花</div>'; return; }
-        box.innerHTML = props.map(p => `
-          <div class="item">
-            <div class="name">🌷 ${p.propName}</div>
-            <div class="desc">${p.propDesc}</div>
-            <div class="owner">👤 ${p.ownerName || '未知'}</div>
+        const url = q ? API+'/api/garden/users?q='+encodeURIComponent(q) : API+'/api/garden/users';
+        const r = await fetch(url);
+        const users = await r.json();
+        if (!users.length) { box.innerHTML = '<div class="empty">🌱 花园里还没有花友</div>'; return; }
+        box.innerHTML = users.map(u => `
+          <div class="item" style="display:flex;justify-content:space-between;align-items:center">
+            <div>
+              <div class="name">👤 ${u.username}</div>
+            </div>
+            <div style="font-size:13px;color:#6a9d7a;background:#e8f5e9;padding:4px 12px;border-radius:20px">🌷 ${u.flowerCount} 朵</div>
           </div>
         `).join('');
       } catch(e) { box.innerHTML = '<div class="empty">搜索失败</div>'; }
+    }
+
+    // 进入花园时自动加载用户列表
+    function showDashboard(user) {
+      document.getElementById('authView').style.display = 'none';
+      document.getElementById('dashboardView').classList.add('show');
+      document.getElementById('displayName').textContent = user.username;
+      document.getElementById('displayScore').textContent = user.score || 0;
+      loadProps();
+      searchUsers();  // 自动加载用户列表
     }
 
     async function updateUsername() {
