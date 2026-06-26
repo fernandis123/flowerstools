@@ -204,6 +204,27 @@ app.delete('/api/props/:id', auth, async (req, res) => {
   } catch (e) { res.status(500).json({ error: '服务器错误' }); }
 });
 
+app.put('/api/props/:id', auth, async (req, res) => {
+  try {
+    const pid = parseInt(req.params.id);
+    let { propName, propDesc } = req.body;
+    if (!propName) return res.status(400).json({ error: '请输入鲜花名称' });
+    if (!propDesc) propDesc = '';
+    if (useJson) {
+      const d = readDB();
+      const idx = d.props.findIndex(p => p.id === pid && p.userId === req.user.id);
+      if (idx === -1) return res.status(404).json({ error: '鲜花不存在' });
+      d.props[idx].propName = propName;
+      d.props[idx].propDesc = propDesc;
+      writeDB(d);
+      return res.json({ message: '已更新', prop: d.props[idx] });
+    } else {
+      const r = await pool.query('UPDATE props SET prop_name=$1, prop_desc=$2 WHERE id=$3 AND user_id=$4 RETURNING *', [propName, propDesc, pid, req.user.id]);
+      if (!r.rows.length) return res.status(404).json({ error: '鲜花不存在' });
+      return res.json({ message: '已更新', prop: { id: r.rows[0].id, userId: r.rows[0].user_id, propName: r.rows[0].prop_name, propDesc: r.rows[0].prop_desc } });
+    }
+  } catch (e) { res.status(500).json({ error: '服务器错误' }); }
+});
 app.get('/api/props/search', async (req, res) => {
   try {
     const q = (req.query.q || '').trim();
