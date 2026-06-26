@@ -166,6 +166,17 @@
       </div>
     </div>
   </div>
+    <div id="editDialog" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.4);z-index:999;justify-content:center;align-items:center" onclick="if(event.target===this)closeEdit()">
+    <div style="background:white;border-radius:16px;padding:24px;width:90%;max-width:400px;box-shadow:0 8px 32px rgba(0,0,0,0.2)" onclick="event.stopPropagation()">
+      <div style="font-size:18px;font-weight:600;color:#5a4a3a;margin-bottom:16px">✏️ 编辑鲜花</div>
+      <input type="text" id="editName" placeholder="鲜花名称" style="width:100%;padding:12px;border:2px solid #e8ddd0;border-radius:10px;font-size:15px;margin-bottom:10px;outline:none">
+      <textarea id="editDesc" placeholder="鲜花描述（选填）" style="width:100%;padding:12px;border:2px solid #e8ddd0;border-radius:10px;font-size:14px;min-height:60px;margin-bottom:16px;outline:none;resize:vertical"></textarea>
+      <div style="display:flex;gap:10px">
+        <button onclick="closeEdit()" style="flex:1;padding:12px;background:#f0ebe4;border:none;border-radius:10px;font-size:15px;cursor:pointer;color:#6a5a4a">取消</button>
+        <button onclick="saveEdit()" style="flex:1;padding:12px;background:#c4a882;color:white;border:none;border-radius:10px;font-size:15px;cursor:pointer">💾 保存</button>
+      </div>
+    </div>
+  </div>
 
   <script>
     const API = window.location.origin;
@@ -232,9 +243,12 @@
           <div class="prop-item">
             <div class="info">
               <div class="name">🌷 ${p.propName}</div>
-              <div class="desc">${p.propDesc}</div>
+              <div class="desc">${p.propDesc || '（无描述）'}</div>
             </div>
-            <button class="del" onclick="deleteProp(${p.id})">删除</button>
+            <div style="display:flex;gap:6px;flex-shrink:0">
+              <button style="background:#b69775;color:white;border:none;padding:6px 14px;border-radius:8px;cursor:pointer;font-size:12px;transition:background 0.3s" onclick="editProp(${p.id},'${p.propName.replace(/'/g,"\\'")}','${(p.propDesc||'').replace(/'/g,"\\'").replace(/\n/g,'\\n')}')">编辑</button>
+              <button class="del" onclick="deleteProp(${p.id})">删除</button>
+            </div>
           </div>
         `).join('');
       } catch(e) { document.getElementById('propsList').innerHTML = '<p style="color:#d4766a;text-align:center;padding:20px">加载失败</p>'; }
@@ -307,6 +321,35 @@
         const r = await fetch(API+'/api/user/password', { method:'PUT', headers:{'Content-Type':'application/json','Authorization':'Bearer '+token}, body:JSON.stringify({newPassword:p}) });
         const d = await r.json();
         if (r.ok) { document.getElementById('newPassword').value=''; alert('✅ 密码已更新'); }
+        else alert(d.error);
+      } catch(e) { alert('网络错误'); }
+    }
+        let editingId = null;
+
+    function editProp(id, name, desc) {
+      editingId = id;
+      document.getElementById('editName').value = name;
+      document.getElementById('editDesc').value = desc;
+      document.getElementById('editDialog').style.display = 'flex';
+    }
+
+    function closeEdit() {
+      document.getElementById('editDialog').style.display = 'none';
+      editingId = null;
+    }
+
+    async function saveEdit() {
+      const name = document.getElementById('editName').value.trim();
+      const desc = document.getElementById('editDesc').value.trim();
+      if (!name) { alert('请输入鲜花名称'); return; }
+      try {
+        const r = await fetch(API+'/api/props/'+editingId, {
+          method:'PUT',
+          headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},
+          body:JSON.stringify({propName:name, propDesc:desc})
+        });
+        const d = await r.json();
+        if (r.ok) { closeEdit(); loadProps(); alert('✅ 已更新'); }
         else alert(d.error);
       } catch(e) { alert('网络错误'); }
     }
