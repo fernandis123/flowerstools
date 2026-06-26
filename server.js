@@ -3,10 +3,8 @@ const path = require('path');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// 静态文件
 app.use('/', express.static(path.join(__dirname, 'public')));
 
-// 首页路由（兜底）
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
