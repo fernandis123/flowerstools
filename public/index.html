@@ -1,399 +1,248 @@
-// ============================================================
-// 数字化工具 - 完整版 (道具管理 + 用户管理)
-// ============================================================
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>数字化工具 - 道具管理</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; display: flex; justify-content: center; align-items: center; padding: 20px; }
+    .container { background: white; border-radius: 20px; padding: 40px; width: 100%; max-width: 500px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); }
+    h1 { text-align: center; color: #333; margin-bottom: 30px; font-size: 28px; }
+    .tab { display: flex; margin-bottom: 25px; border-radius: 10px; overflow: hidden; border: 1px solid #e0e0e0; }
+    .tab button { flex: 1; padding: 12px; border: none; background: #f5f5f5; cursor: pointer; font-size: 16px; transition: all 0.3s; }
+    .tab button.active { background: #667eea; color: white; }
+    .form { display: flex; flex-direction: column; gap: 15px; }
+    .form.hidden { display: none; }
+    input { padding: 14px 16px; border: 2px solid #e0e0e0; border-radius: 10px; font-size: 16px; outline: none; transition: border 0.3s; }
+    input:focus { border-color: #667eea; }
+    button.submit { padding: 14px; background: linear-gradient(135deg, #667eea, #764ba2); color: white; border: none; border-radius: 10px; font-size: 16px; cursor: pointer; transition: transform 0.2s; }
+    button.submit:hover { transform: translateY(-2px); }
+    .msg { text-align: center; color: #e74c3c; font-size: 14px; min-height: 20px; }
+    .msg.success { color: #27ae60; }
+    .dashboard { display: none; }
+    .dashboard.show { display: block; }
+    .user-info { background: #f8f9ff; padding: 15px; border-radius: 10px; margin-bottom: 20px; }
+    .user-info p { margin: 5px 0; color: #555; }
+    .user-info strong { color: #333; }
+    .logout { background: #e74c3c; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; float: right; }
+    .section-title { font-size: 18px; color: #333; margin: 20px 0 10px; }
+    textarea { padding: 12px; border: 2px solid #e0e0e0; border-radius: 10px; font-size: 14px; resize: vertical; min-height: 80px; outline: none; }
+    textarea:focus { border-color: #667eea; }
+    .props-list { max-height: 300px; overflow-y: auto; }
+    .prop-item { background: #f8f9ff; padding: 12px; border-radius: 8px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; }
+    .prop-item .info { flex: 1; }
+    .prop-item .name { font-weight: bold; color: #333; }
+    .prop-item .desc { font-size: 13px; color: #666; margin-top: 3px; }
+    .prop-item .del { background: #e74c3c; color: white; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 12px; }
+    .link-btn { background: none; border: none; color: #667eea; cursor: pointer; text-decoration: underline; padding: 0; font-size: 14px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🛠️ 数字化工具</h1>
 
-const express = require('express');
-const cors = require('cors');
-const jwt = require('jsonwebtoken');
-const bcrypt = require('bcryptjs');
-const { Pool } = require('pg');
-const path = require('path');
-const fs = require('fs');
+    <!-- 登录/注册 -->
+    <div id="authView">
+      <div class="tab">
+        <button id="tabLogin" class="active" onclick="switchTab('login')">登录</button>
+        <button id="tabRegister" onclick="switchTab('register')">注册</button>
+      </div>
 
-const app = express();
-const PORT = process.env.PORT || 3000;
-const JWT_SECRET = process.env.JWT_SECRET || 'mySuperSecretKey2024';
+      <form id="loginForm" class="form" onsubmit="handleLogin(event)">
+        <input type="text" id="loginUsername" placeholder="用户名" required>
+        <input type="password" id="loginPassword" placeholder="密码" required>
+        <div class="msg" id="loginMsg"></div>
+        <button type="submit" class="submit">登录</button>
+      </form>
 
-app.use(cors());
-app.use(express.json());
-app.use(express.static(path.join(__dirname, 'public')));
+      <form id="registerForm" class="form hidden" onsubmit="handleRegister(event)">
+        <input type="text" id="regUsername" placeholder="用户名" required>
+        <input type="password" id="regPassword" placeholder="密码" required>
+        <div class="msg" id="regMsg"></div>
+        <button type="submit" class="submit">注册</button>
+      </form>
+    </div>
 
-// ===== 数据库 =====
-let pool;
-let useJsonFallback = false;
-const DB_FILE = path.join(__dirname, 'data.json');
+    <!-- 主面板 -->
+    <div id="dashboardView" class="dashboard">
+      <div class="user-info">
+        <button class="logout" onclick="handleLogout()">退出</button>
+        <p>👤 <strong id="displayName"></strong></p>
+        <p>🏆 积分: <strong id="displayScore">0</strong></p>
+      </div>
 
-async function initDatabase() {
-  const connectionString = process.env.DATABASE_URL;
-  if (!connectionString) {
-    console.log('⚠️ 未设置 DATABASE_URL，回退到 JSON 文件存储');
-    useJsonFallback = true;
-    initJsonStorage();
-    return;
-  }
-  try {
-    pool = new Pool({ connectionString, ssl: { rejectUnauthorized: false } });
-    const client = await pool.connect();
-    console.log('✅ PostgreSQL 连接成功！');
+      <div class="section-title">📝 修改个人信息</div>
+      <div style="display:flex;gap:10px;margin-bottom:15px">
+        <input type="text" id="newUsername" placeholder="新用户名" style="flex:1">
+        <button class="submit" onclick="updateUsername()" style="padding:10px;font-size:14px">改名</button>
+      </div>
+      <div style="display:flex;gap:10px;margin-bottom:20px">
+        <input type="password" id="newPassword" placeholder="新密码" style="flex:1">
+        <button class="submit" onclick="updatePassword()" style="padding:10px;font-size:14px">改密码</button>
+      </div>
 
-    await client.query(`
-      CREATE TABLE IF NOT EXISTS users (
-        id SERIAL PRIMARY KEY,
-        username VARCHAR(50) UNIQUE NOT NULL,
-        password VARCHAR(255) NOT NULL,
-        score INTEGER DEFAULT 0,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      )
-    `);
-    console.log('✅ users 表已就绪');
+      <div class="section-title">➕ 录入道具</div>
+      <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:20px">
+        <input type="text" id="propName" placeholder="道具名称">
+        <textarea id="propDesc" placeholder="道具描述"></textarea>
+        <button class="submit" onclick="addProp()">录入道具</button>
+      </div>
 
-    await client.query(`
-      CREATE TABLE IF NOT EXISTS props (
-        id SERIAL PRIMARY KEY,
-        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-        prop_name VARCHAR(100) NOT NULL,
-        prop_desc TEXT NOT NULL,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      )
-    `);
-    console.log('✅ props 表已就绪');
+      <div style="display:flex;gap:10px;margin-bottom:10px">
+        <input type="text" id="searchKeyword" placeholder="搜索道具..." style="flex:1">
+        <button class="submit" onclick="searchProps()" style="padding:10px;font-size:14px">搜索</button>
+      </div>
 
-    client.release();
-  } catch (err) {
-    console.error('❌ 数据库初始化失败:', err.message);
-    console.log('⚠️ 回退到 JSON 文件存储');
-    useJsonFallback = true;
-    initJsonStorage();
-  }
-}
+      <div class="section-title">📋 我的道具</div>
+      <div class="props-list" id="propsList">
+        <p style="color:#999;text-align:center">暂无道具</p>
+      </div>
+    </div>
+  </div>
 
-function initJsonStorage() {
-  if (!fs.existsSync(DB_FILE)) {
-    fs.writeFileSync(DB_FILE, JSON.stringify({ users: [], props: [] }, null, 2));
-    console.log('✅ 已创建 data.json 文件');
-  } else {
-    // 兼容旧版 data.json（没有 props 字段）
-    try {
-      const data = JSON.parse(fs.readFileSync(DB_FILE, 'utf8'));
-      if (!data.props) {
-        data.props = [];
-        fs.writeFileSync(DB_FILE, JSON.stringify(data, null, 2));
+  <script>
+    const API_BASE = window.location.origin;
+    let token = localStorage.getItem('token');
+
+    function switchTab(tab) {
+      document.getElementById('tabLogin').className = tab === 'login' ? 'active' : '';
+      document.getElementById('tabRegister').className = tab === 'register' ? 'active' : '';
+      document.getElementById('loginForm').className = tab === 'login' ? 'form' : 'form hidden';
+      document.getElementById('registerForm').className = tab === 'register' ? 'form' : 'form hidden';
+    }
+
+    async function handleLogin(e) {
+      e.preventDefault();
+      const username = document.getElementById('loginUsername').value;
+      const password = document.getElementById('loginPassword').value;
+      const msg = document.getElementById('loginMsg');
+      msg.className = 'msg';
+      try {
+        const r = await fetch(API_BASE + '/api/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username, password }) });
+        const d = await r.json();
+        if (r.ok) { token = d.token; localStorage.setItem('token', d.token); showDashboard(d.user); }
+        else { msg.textContent = d.error; }
+      } catch(e) { msg.textContent = '网络错误'; }
+    }
+
+    async function handleRegister(e) {
+      e.preventDefault();
+      const username = document.getElementById('regUsername').value;
+      const password = document.getElementById('regPassword').value;
+      const msg = document.getElementById('regMsg');
+      msg.className = 'msg';
+      try {
+        const r = await fetch(API_BASE + '/api/register', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username, password }) });
+        const d = await r.json();
+        if (r.ok) { token = d.token; localStorage.setItem('token', d.token); showDashboard(d.user); }
+        else { msg.textContent = d.error; }
+      } catch(e) { msg.textContent = '网络错误'; }
+    }
+
+    async function showDashboard(user) {
+      document.getElementById('authView').style.display = 'none';
+      document.getElementById('dashboardView').classList.add('show');
+      document.getElementById('displayName').textContent = user.username;
+      document.getElementById('displayScore').textContent = user.score || 0;
+      document.getElementById('propsList').innerHTML = '<p style="color:#999;text-align:center">加载中...</p>';
+      loadProps();
+    }
+
+    function handleLogout() {
+      token = null; localStorage.removeItem('token');
+      document.getElementById('authView').style.display = 'block';
+      document.getElementById('dashboardView').classList.remove('show');
+    }
+
+    async function loadProps() {
+      try {
+        const r = await fetch(API_BASE + '/api/props/mine', { headers: { 'Authorization': 'Bearer ' + token } });
+        if (!r.ok) throw new Error();
+        const props = await r.json();
+        const list = document.getElementById('propsList');
+        if (!props.length) { list.innerHTML = '<p style="color:#999;text-align:center">暂无道具</p>'; return; }
+        list.innerHTML = props.map(p => `
+          <div class="prop-item">
+            <div class="info">
+              <div class="name">${p.propName}</div>
+              <div class="desc">${p.propDesc}</div>
+            </div>
+            <button class="del" onclick="deleteProp(${p.id})">删除</button>
+          </div>
+        `).join('');
+      } catch(e) {
+        document.getElementById('propsList').innerHTML = '<p style="color:#e74c3c;text-align:center">加载失败</p>';
       }
-    } catch { }
-    console.log('✅ data.json 已存在');
-  }
-}
-
-// ===== JSON 工具函数 =====
-function readData() {
-  try {
-    return JSON.parse(fs.readFileSync(DB_FILE, 'utf8'));
-  } catch { return { users: [], props: [] }; }
-}
-function writeData(data) {
-  fs.writeFileSync(DB_FILE, JSON.stringify(data, null, 2));
-}
-
-// ===== Token 中间件 =====
-function authenticateToken(req, res, next) {
-  const authHeader = req.headers['authorization'];
-  const token = authHeader && authHeader.split(' ')[1];
-  if (!token) return res.status(401).json({ error: '未登录，请先登录' });
-  jwt.verify(token, JWT_SECRET, (err, user) => {
-    if (err) return res.status(403).json({ error: '登录已过期，请重新登录' });
-    req.user = user;
-    next();
-  });
-}
-
-// ==================== 用户接口 ====================
-
-// 注册
-app.post('/api/register', async (req, res) => {
-  try {
-    const { username, password } = req.body;
-    if (!username || !password) return res.status(400).json({ error: '用户名和密码不能为空' });
-    if (username.length < 2) return res.status(400).json({ error: '用户名至少2个字符' });
-    if (password.length < 4) return res.status(400).json({ error: '密码至少4个字符' });
-
-    const hashedPassword = await bcrypt.hash(password, 10);
-
-    if (useJsonFallback) {
-      const data = readData();
-      if (data.users.find(u => u.username === username)) return res.status(400).json({ error: '用户名已存在' });
-      const newUser = { id: data.users.length + 1, username, password: hashedPassword, score: 0, created_at: new Date().toISOString() };
-      data.users.push(newUser);
-      writeData(data);
-      const token = jwt.sign({ id: newUser.id, username: newUser.username }, JWT_SECRET, { expiresIn: '7d' });
-      return res.json({ message: '注册成功', token, user: { id: newUser.id, username: newUser.username, score: 0 } });
-    } else {
-      const existing = await pool.query('SELECT * FROM users WHERE username = $1', [username]);
-      if (existing.rows.length > 0) return res.status(400).json({ error: '用户名已存在' });
-      const result = await pool.query('INSERT INTO users (username, password) VALUES ($1, $2) RETURNING id, username, score', [username, hashedPassword]);
-      const newUser = result.rows[0];
-      const token = jwt.sign({ id: newUser.id, username: newUser.username }, JWT_SECRET, { expiresIn: '7d' });
-      return res.json({ message: '注册成功', token, user: { id: newUser.id, username: newUser.username, score: newUser.score } });
     }
-  } catch (err) {
-    console.error('注册错误:', err.message);
-    res.status(500).json({ error: '服务器错误，请稍后再试' });
-  }
-});
 
-// 登录
-app.post('/api/login', async (req, res) => {
-  try {
-    const { username, password } = req.body;
-    if (!username || !password) return res.status(400).json({ error: '用户名和密码不能为空' });
-
-    if (useJsonFallback) {
-      const data = readData();
-      const user = data.users.find(u => u.username === username);
-      if (!user || !(await bcrypt.compare(password, user.password))) return res.status(400).json({ error: '用户名或密码错误' });
-      const token = jwt.sign({ id: user.id, username: user.username }, JWT_SECRET, { expiresIn: '7d' });
-      return res.json({ message: '登录成功', token, user: { id: user.id, username: user.username, score: user.score } });
-    } else {
-      const result = await pool.query('SELECT * FROM users WHERE username = $1', [username]);
-      if (result.rows.length === 0 || !(await bcrypt.compare(password, result.rows[0].password)))
-        return res.status(400).json({ error: '用户名或密码错误' });
-      const user = result.rows[0];
-      const token = jwt.sign({ id: user.id, username: user.username }, JWT_SECRET, { expiresIn: '7d' });
-      return res.json({ message: '登录成功', token, user: { id: user.id, username: user.username, score: user.score } });
+    async function addProp() {
+      const name = document.getElementById('propName').value;
+      const desc = document.getElementById('propDesc').value;
+      if (!name || !desc) { alert('请填写完整'); return; }
+      try {
+        const r = await fetch(API_BASE + '/api/props', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token }, body: JSON.stringify({ propName: name, propDesc: desc }) });
+        const d = await r.json();
+        if (r.ok) { document.getElementById('propName').value = ''; document.getElementById('propDesc').value = ''; loadProps(); }
+        else { alert(d.error); }
+      } catch(e) { alert('网络错误'); }
     }
-  } catch (err) {
-    console.error('登录错误:', err.message);
-    res.status(500).json({ error: '服务器错误' });
-  }
-});
 
-// 获取用户信息 (profile)
-app.get('/api/user/profile', authenticateToken, async (req, res) => {
-  try {
-    if (useJsonFallback) {
-      const data = readData();
-      const user = data.users.find(u => u.id === req.user.id);
-      if (!user) return res.status(404).json({ error: '用户不存在' });
-      return res.json({ id: user.id, username: user.username, score: user.score });
-    } else {
-      const result = await pool.query('SELECT id, username, score FROM users WHERE id = $1', [req.user.id]);
-      if (result.rows.length === 0) return res.status(404).json({ error: '用户不存在' });
-      return res.json(result.rows[0]);
+    async function deleteProp(id) {
+      if (!confirm('确定删除？')) return;
+      try {
+        const r = await fetch(API_BASE + '/api/props/' + id, { method: 'DELETE', headers: { 'Authorization': 'Bearer ' + token } });
+        if (r.ok) loadProps(); else alert('删除失败');
+      } catch(e) { alert('网络错误'); }
     }
-  } catch (err) {
-    console.error('获取用户信息错误:', err.message);
-    res.status(500).json({ error: '服务器错误' });
-  }
-});
 
-// 修改用户名
-app.put('/api/user/username', authenticateToken, async (req, res) => {
-  try {
-    const { newUsername } = req.body;
-    if (!newUsername || newUsername.length < 2) return res.status(400).json({ error: '用户名至少2个字符' });
-
-    if (useJsonFallback) {
-      const data = readData();
-      if (data.users.find(u => u.username === newUsername && u.id !== req.user.id))
-        return res.status(400).json({ error: '用户名已被使用' });
-      const idx = data.users.findIndex(u => u.id === req.user.id);
-      if (idx === -1) return res.status(404).json({ error: '用户不存在' });
-      data.users[idx].username = newUsername;
-      writeData(data);
-      const token = jwt.sign({ id: req.user.id, username: newUsername }, JWT_SECRET, { expiresIn: '7d' });
-      return res.json({ message: '用户名已更新', token, username: newUsername });
-    } else {
-      const existing = await pool.query('SELECT * FROM users WHERE username = $1 AND id != $2', [newUsername, req.user.id]);
-      if (existing.rows.length > 0) return res.status(400).json({ error: '用户名已被使用' });
-      await pool.query('UPDATE users SET username = $1 WHERE id = $2', [newUsername, req.user.id]);
-      const token = jwt.sign({ id: req.user.id, username: newUsername }, JWT_SECRET, { expiresIn: '7d' });
-      return res.json({ message: '用户名已更新', token, username: newUsername });
+    async function searchProps() {
+      const q = document.getElementById('searchKeyword').value.trim();
+      if (!q) { loadProps(); return; }
+      try {
+        const r = await fetch(API_BASE + '/api/props/search?q=' + encodeURIComponent(q));
+        const props = await r.json();
+        const list = document.getElementById('propsList');
+        if (!props.length) { list.innerHTML = '<p style="color:#999;text-align:center">未找到匹配道具</p>'; return; }
+        list.innerHTML = props.map(p => `
+          <div class="prop-item">
+            <div class="info">
+              <div class="name">${p.propName} <span style="font-size:12px;color:#999">- ${p.ownerName || '未知'}</span></div>
+              <div class="desc">${p.propDesc}</div>
+            </div>
+          </div>
+        `).join('');
+      } catch(e) { alert('搜索失败'); }
     }
-  } catch (err) {
-    console.error('修改用户名错误:', err.message);
-    res.status(500).json({ error: '服务器错误' });
-  }
-});
 
-// 修改密码
-app.put('/api/user/password', authenticateToken, async (req, res) => {
-  try {
-    const { newPassword } = req.body;
-    if (!newPassword || newPassword.length < 4) return res.status(400).json({ error: '密码至少4个字符' });
-    const hashedPassword = await bcrypt.hash(newPassword, 10);
-
-    if (useJsonFallback) {
-      const data = readData();
-      const idx = data.users.findIndex(u => u.id === req.user.id);
-      if (idx === -1) return res.status(404).json({ error: '用户不存在' });
-      data.users[idx].password = hashedPassword;
-      writeData(data);
-      return res.json({ message: '密码已更新' });
-    } else {
-      await pool.query('UPDATE users SET password = $1 WHERE id = $2', [hashedPassword, req.user.id]);
-      return res.json({ message: '密码已更新' });
+    async function updateUsername() {
+      const name = document.getElementById('newUsername').value;
+      if (!name) { alert('请输入新用户名'); return; }
+      try {
+        const r = await fetch(API_BASE + '/api/user/username', { method: 'PUT', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token }, body: JSON.stringify({ newUsername: name }) });
+        const d = await r.json();
+        if (r.ok) { token = d.token; localStorage.setItem('token', d.token); document.getElementById('displayName').textContent = name; document.getElementById('newUsername').value = ''; alert('用户名已更新'); }
+        else { alert(d.error); }
+      } catch(e) { alert('网络错误'); }
     }
-  } catch (err) {
-    console.error('修改密码错误:', err.message);
-    res.status(500).json({ error: '服务器错误' });
-  }
-});
 
-// ==================== 道具接口 ====================
-
-// 录入道具
-app.post('/api/props', authenticateToken, async (req, res) => {
-  try {
-    const { propName, propDesc } = req.body;
-    if (!propName) return res.status(400).json({ error: '请输入道具名称' });
-    if (!propDesc) return res.status(400).json({ error: '请输入道具描述' });
-
-    if (useJsonFallback) {
-      const data = readData();
-      const newProp = {
-        id: data.props.length + 1,
-        userId: req.user.id,
-        ownerName: req.user.username,
-        propName,
-        propDesc,
-        createdAt: new Date().toISOString()
-      };
-      data.props.push(newProp);
-      writeData(data);
-      return res.json({ message: '道具录入成功', prop: newProp });
-    } else {
-      const result = await pool.query(
-        'INSERT INTO props (user_id, prop_name, prop_desc) VALUES ($1, $2, $3) RETURNING id, user_id, prop_name, prop_desc, created_at',
-        [req.user.id, propName, propDesc]
-      );
-      return res.json({ message: '道具录入成功', prop: result.rows[0] });
+    async function updatePassword() {
+      const pwd = document.getElementById('newPassword').value;
+      if (!pwd) { alert('请输入新密码'); return; }
+      try {
+        const r = await fetch(API_BASE + '/api/user/password', { method: 'PUT', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token }, body: JSON.stringify({ newPassword: pwd }) });
+        const d = await r.json();
+        if (r.ok) { document.getElementById('newPassword').value = ''; alert('密码已更新'); }
+        else { alert(d.error); }
+      } catch(e) { alert('网络错误'); }
     }
-  } catch (err) {
-    console.error('录入道具错误:', err.message);
-    res.status(500).json({ error: '服务器错误' });
-  }
-});
 
-// 获取我的道具列表
-app.get('/api/props/mine', authenticateToken, async (req, res) => {
-  try {
-    if (useJsonFallback) {
-      const data = readData();
-      const myProps = data.props.filter(p => p.userId === req.user.id)
-        .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-      return res.json(myProps);
-    } else {
-      const result = await pool.query(
-        'SELECT id, user_id, prop_name, prop_desc, created_at FROM props WHERE user_id = $1 ORDER BY created_at DESC',
-        [req.user.id]
-      );
-      // 转换成前端期望的字段名
-      const props = result.rows.map(r => ({
-        id: r.id,
-        userId: r.user_id,
-        ownerName: req.user.username,
-        propName: r.prop_name,
-        propDesc: r.prop_desc,
-        createdAt: r.created_at
-      }));
-      return res.json(props);
+    // 自动登录
+    if (token) {
+      fetch(API_BASE + '/api/user/profile', { headers: { 'Authorization': 'Bearer ' + token } })
+        .then(r => r.json()).then(u => { if (u.id) showDashboard(u); else { token = null; localStorage.removeItem('token'); } })
+        .catch(() => { token = null; localStorage.removeItem('token'); });
     }
-  } catch (err) {
-    console.error('获取道具列表错误:', err.message);
-    res.status(500).json({ error: '服务器错误' });
-  }
-});
-
-// 删除道具
-app.delete('/api/props/:id', authenticateToken, async (req, res) => {
-  try {
-    const propId = parseInt(req.params.id);
-
-    if (useJsonFallback) {
-      const data = readData();
-      const idx = data.props.findIndex(p => p.id === propId && p.userId === req.user.id);
-      if (idx === -1) return res.status(404).json({ error: '道具不存在或无权删除' });
-      data.props.splice(idx, 1);
-      writeData(data);
-      return res.json({ message: '道具已删除' });
-    } else {
-      const result = await pool.query(
-        'DELETE FROM props WHERE id = $1 AND user_id = $2 RETURNING id',
-        [propId, req.user.id]
-      );
-      if (result.rows.length === 0) return res.status(404).json({ error: '道具不存在或无权删除' });
-      return res.json({ message: '道具已删除' });
-    }
-  } catch (err) {
-    console.error('删除道具错误:', err.message);
-    res.status(500).json({ error: '服务器错误' });
-  }
-});
-
-// 搜索道具（跨用户）
-app.get('/api/props/search', async (req, res) => {
-  try {
-    const keyword = (req.query.q || '').trim();
-    if (!keyword) return res.status(400).json({ error: '请输入搜索关键词' });
-
-    if (useJsonFallback) {
-      const data = readData();
-      const results = data.props.filter(p =>
-        p.propName.toLowerCase().includes(keyword.toLowerCase()) ||
-        p.propDesc.toLowerCase().includes(keyword.toLowerCase())
-      );
-      return res.json(results);
-    } else {
-      const result = await pool.query(
-        `SELECT p.id, p.user_id, p.prop_name, p.prop_desc, p.created_at, u.username as owner_name
-         FROM props p JOIN users u ON p.user_id = u.id
-         WHERE p.prop_name ILIKE $1 OR p.prop_desc ILIKE $1
-         ORDER BY p.created_at DESC`,
-        [`%${keyword}%`]
-      );
-      const props = result.rows.map(r => ({
-        id: r.id,
-        userId: r.user_id,
-        ownerName: r.owner_name,
-        propName: r.prop_name,
-        propDesc: r.prop_desc,
-        createdAt: r.created_at
-      }));
-      return res.json(props);
-    }
-  } catch (err) {
-    console.error('搜索道具错误:', err.message);
-    res.status(500).json({ error: '服务器错误' });
-  }
-});
-
-// ===== 排行榜（保留） =====
-app.get('/api/ranking', async (req, res) => {
-  try {
-    if (useJsonFallback) {
-      const data = readData();
-      const ranking = data.users.sort((a, b) => b.score - a.score).slice(0, 50)
-        .map((u, i) => ({ rank: i + 1, username: u.username, score: u.score }));
-      return res.json(ranking);
-    } else {
-      const result = await pool.query('SELECT username, score FROM users ORDER BY score DESC LIMIT 50');
-      const ranking = result.rows.map((u, i) => ({ rank: i + 1, username: u.username, score: u.score }));
-      return res.json(ranking);
-    }
-  } catch (err) {
-    console.error('排行榜错误:', err.message);
-    res.status(500).json({ error: '服务器错误' });
-  }
-});
-
-// ===== 启动服务器 =====
-async function start() {
-  await initDatabase();
-  app.listen(PORT, '0.0.0.0', () => {
-    console.log('\n==========================================');
-    console.log('🎮 数字化工具服务器已启动！');
-    console.log('📡 端口:', PORT);
-    console.log('🔗 打开浏览器访问: http://localhost:' + PORT);
-    console.log('==========================================\n');
-  });
-}
-start();
+  </script>
+</body>
+</html>
