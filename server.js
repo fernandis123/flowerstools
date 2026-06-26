@@ -232,6 +232,36 @@ app.get('/api/ranking', async (req, res) => {
     }
   } catch (e) { res.status(500).json({ error: '服务器错误' }); }
 });
+app.get('/api/garden/users', async (req, res) => {
+  try {
+    const q = (req.query.q || '').trim();
+    if (useJson) {
+      const d = readDB();
+      // 统计每个用户的花数量
+      const counts = {};
+      d.props.forEach(p => {
+        if (!q || p.propName.includes(q) || p.propDesc.includes(q)) {
+          counts[p.ownerName] = (counts[p.ownerName] || 0) + 1;
+        }
+      });
+      let result = Object.entries(counts).map(([username, flowerCount]) => ({ username, flowerCount }));
+      result.sort((a, b) => b.flowerCount - a.flowerCount);
+      if (!q) result = result.slice(0, 50);
+      return res.json(result);
+    } else {
+      let sql, params;
+      if (q) {
+        sql = `SELECT u.username, COUNT(p.id)::int AS "flowerCount" FROM users u JOIN props p ON u.id = p.user_id WHERE p.prop_name ILIKE $1 OR p.prop_desc ILIKE $1 GROUP BY u.username ORDER BY "flowerCount" DESC LIMIT 50`;
+        params = [`%${q}%`];
+      } else {
+        sql = `SELECT u.username, COUNT(p.id)::int AS "flowerCount" FROM users u JOIN props p ON u.id = p.user_id GROUP BY u.username ORDER BY "flowerCount" DESC LIMIT 50`;
+        params = [];
+      }
+      const r = await pool.query(sql, params);
+      return res.json(r.rows);
+    }
+  } catch (e) { res.status(500).json({ error: '服务器错误' }); }
+});
 
 // ====== 启动 ======
 async function start() {
