@@ -243,7 +243,7 @@
 
     async function addProp() {
       const n = document.getElementById('propName').value, d = document.getElementById('propDesc').value;
-      if (!n || !d) { alert('请填写鲜花名称和描述'); return; }
+      if (!n) { alert('请输入鲜花名称'); return; }
       try {
         const r = await fetch(API+'/api/props', { method:'POST', headers:{'Content-Type':'application/json','Authorization':'Bearer '+token}, body:JSON.stringify({propName:n,propDesc:d}) });
         const res = await r.json();
