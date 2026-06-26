@@ -105,8 +105,7 @@
     <div id="dashboardView" class="dashboard">
       <div class="user-info">
         <div class="left">
-          <p>👤 <strong id="displayName"></strong></p>
-          <p>🏆 积分: <strong id="displayScore">0</strong></p>
+          <p><strong id="displayName"></strong></p>
         </div>
         <button class="logout" onclick="handleLogout()">退出</button>
       </div>
@@ -272,7 +271,7 @@
         box.innerHTML = users.map(u => `
           <div class="item" style="display:flex;justify-content:space-between;align-items:center">
             <div>
-              <div class="name">👤 ${u.username}</div>
+              <div class="name"> ${u.username}</div>
             </div>
             <div style="font-size:13px;color:#6a9d7a;background:#e8f5e9;padding:4px 12px;border-radius:20px">🌷 ${u.flowerCount} 朵</div>
           </div>
