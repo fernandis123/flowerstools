@@ -5,7 +5,6 @@ const bcrypt = require('bcryptjs');
 const { Pool } = require('pg');
 const path = require('path');
 const fs = require('fs');
-
 const app = express();
 const PORT = process.env.PORT || 3000;
 const JWT_SECRET = process.env.JWT_SECRET || 'mySuperSecretKey2024';
