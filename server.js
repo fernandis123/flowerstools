@@ -160,7 +160,7 @@ app.put('/api/user/password', auth, async (req, res) => {
 // ====== 道具 API ======
 app.post('/api/props', auth, async (req, res) => {
   try {
-    const { propName, propDesc } = req.body;
+    let { propName, propDesc } = req.body;
     if (!propName) return res.status(400).json({ error: '请输入道具名称' });
     if (!propDesc) propDesc = '';
     if (useJson) {
